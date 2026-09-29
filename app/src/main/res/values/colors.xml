@@ -2,5 +2,10 @@
 <resources>
     <color name="accent">#FF7A00</color>
     <color name="icon_background">#FFFFFFFF</color>
-    <color name="section_label">#FF888888</color>
+    <color name="section_label">#FF000000</color>
+    <color name="switch_on">#FF29B6F6</color>
+    <color name="switch_on_track">#6129B6F6</color>
+    <color name="switch_off">#FFBFC6CC</color>
+    <color name="switch_off_track">#61A6ADB5</color>
+    <color name="picker_surface">#FFFFFFFF</color>
 </resources>

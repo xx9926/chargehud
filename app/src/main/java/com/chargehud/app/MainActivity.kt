@@ -6,6 +6,7 @@ import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
@@ -23,7 +24,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var switchAutoCapacity: SwitchCompat
     private lateinit var switchDualCell: SwitchCompat
     private lateinit var switchHalfVoltage: SwitchCompat
+    private lateinit var switchResidentNotification: SwitchCompat
+    private lateinit var switchLocked: SwitchCompat
+    private lateinit var checkShowPower: CheckBox
+    private lateinit var checkShowTemp: CheckBox
+    private lateinit var checkShowVolt: CheckBox
+    private lateinit var checkShowAmp: CheckBox
+    private lateinit var residentNotificationHint: TextView
     private lateinit var btnPalette: Button
+    private lateinit var appearanceHeader: TextView
+    private lateinit var appearanceSection: LinearLayout
     private lateinit var dataHeader: TextView
     private lateinit var dataSection: LinearLayout
     private lateinit var posHeader: TextView
@@ -72,7 +82,16 @@ class MainActivity : AppCompatActivity() {
         switchAutoCapacity = findViewById(R.id.switchAutoCapacity)
         switchDualCell = findViewById(R.id.switchDualCell)
         switchHalfVoltage = findViewById(R.id.switchHalfVoltage)
+        switchResidentNotification = findViewById(R.id.switchResidentNotification)
+        switchLocked = findViewById(R.id.switchLocked)
+        checkShowPower = findViewById(R.id.checkShowPower)
+        checkShowTemp = findViewById(R.id.checkShowTemp)
+        checkShowVolt = findViewById(R.id.checkShowVolt)
+        checkShowAmp = findViewById(R.id.checkShowAmp)
+        residentNotificationHint = findViewById(R.id.residentNotificationHint)
         btnPalette = findViewById(R.id.btnPalette)
+        appearanceHeader = findViewById(R.id.appearanceHeader)
+        appearanceSection = findViewById(R.id.appearanceSection)
         dataHeader = findViewById(R.id.dataHeader)
         dataSection = findViewById(R.id.dataSection)
         posHeader = findViewById(R.id.posHeader)
@@ -127,6 +146,19 @@ class MainActivity : AppCompatActivity() {
                 BatteryReader.reset()
             }
         }
+        switchResidentNotification.setOnCheckedChangeListener { _, checked ->
+            if (!updatingUi) {
+                config.residentNotification = checked
+                syncResidentHint()
+            }
+        }
+        switchLocked.setOnCheckedChangeListener { _, checked ->
+            if (!updatingUi) config.locked = checked
+        }
+        checkShowPower.setOnCheckedChangeListener { _, checked -> if (!updatingUi) config.showPower = checked }
+        checkShowTemp.setOnCheckedChangeListener { _, checked -> if (!updatingUi) config.showTemp = checked }
+        checkShowVolt.setOnCheckedChangeListener { _, checked -> if (!updatingUi) config.showVoltage = checked }
+        checkShowAmp.setOnCheckedChangeListener { _, checked -> if (!updatingUi) config.showCurrent = checked }
 
         seekTextSize.setOnSeekBarChangeListener(object : SimpleSeekListener() {
             override fun onValueChanged(bar: SeekBar, progress: Int) {
@@ -155,6 +187,13 @@ class MainActivity : AppCompatActivity() {
 
         btnPalette.setOnClickListener { ColorPickerDialog.show(this) }
 
+        appearanceHeader.setOnClickListener {
+            val expanded = appearanceSection.visibility != View.VISIBLE
+            appearanceSection.visibility = if (expanded) View.VISIBLE else View.GONE
+            syncAppearanceHeader()
+        }
+        syncAppearanceHeader()
+
         dataHeader.setOnClickListener {
             val expanded = dataSection.visibility != View.VISIBLE
             dataSection.visibility = if (expanded) View.VISIBLE else View.GONE
@@ -169,6 +208,12 @@ class MainActivity : AppCompatActivity() {
         }
         syncPosHeader()
         wirePositionButtons()
+    }
+
+    private fun syncAppearanceHeader() {
+        val expanded = appearanceSection.visibility == View.VISIBLE
+        appearanceHeader.text =
+            getString(R.string.section_appearance) + if (expanded) "　▾" else "　▸"
     }
 
     private fun syncDataHeader() {
@@ -234,6 +279,13 @@ class MainActivity : AppCompatActivity() {
         switchAutoCapacity.isChecked = config.autoCapacity
         switchDualCell.isChecked = config.dualCell
         switchHalfVoltage.isChecked = config.halfVoltage
+        switchResidentNotification.isChecked = config.residentNotification
+        switchLocked.isChecked = config.locked
+        checkShowPower.isChecked = config.showPower
+        checkShowTemp.isChecked = config.showTemp
+        checkShowVolt.isChecked = config.showVoltage
+        checkShowAmp.isChecked = config.showCurrent
+        syncResidentHint()
 
         seekTextSize.progress = (config.textSizeSp - Prefs.MIN_TEXT_SP).roundToInt()
         textSizeValue.text = "${config.textSizeSp.roundToInt()} sp"
@@ -243,6 +295,12 @@ class MainActivity : AppCompatActivity() {
         syncCapacityLabel()
         seekRefresh.progress = config.refreshMillis / 100 - 3
         refreshValue.text = "${config.refreshMillis / 1000f} 秒"
+    }
+
+    /** 只有关掉常驻时才说明代价，平时不占地方。 */
+    private fun syncResidentHint() {
+        residentNotificationHint.visibility =
+            if (config.residentNotification) View.GONE else View.VISIBLE
     }
 
     /** 显示估算真正会用到的容量：自动读到就用设计容量。 */
@@ -255,8 +313,6 @@ class MainActivity : AppCompatActivity() {
         statusText.text = buildString {
             append("服务状态：")
             append(if (HudService.isAlive()) getString(R.string.service_running) else getString(R.string.service_stopped))
-            append("　长按悬浮窗")
-            append(if (config.locked) "解锁" else "锁定")
         }
     }
 
@@ -278,24 +334,13 @@ class MainActivity : AppCompatActivity() {
                     reading.formatPower(),
                     reading.formatTemp(),
                     volts,
-                    amps,
-                    sourceLabel(reading.source)
+                    amps
                 )
             }
             handler.postDelayed(this, 1_000)
             refreshStatus()
         }
     }
-
-    private fun sourceLabel(source: PowerSource): String = getString(
-        when (source) {
-            PowerSource.FRAMEWORK -> R.string.power_source_framework
-            PowerSource.SYSTEM_FILE -> R.string.power_source_sysfs
-            PowerSource.CHARGE_COUNTER -> R.string.power_source_counter
-            PowerSource.ESTIMATED -> R.string.power_source_estimated
-            PowerSource.UNKNOWN -> R.string.power_source_none
-        }
-    )
 
     private abstract inner class SimpleSeekListener : SeekBar.OnSeekBarChangeListener {
         abstract fun onValueChanged(bar: SeekBar, progress: Int)

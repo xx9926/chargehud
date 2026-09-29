@@ -71,6 +71,8 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
     private lateinit var grabView: View
     private lateinit var powerView: TextView
     private lateinit var tempView: TextView
+    private lateinit var voltView: TextView
+    private lateinit var ampView: TextView
 
     private var dragging = false
     private var dragLeft = 0
@@ -158,18 +160,9 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
         }
 
         override fun onSingleTapUp(e: MotionEvent): Boolean {
-            if (!dragged && !settings.locked) openSettings()
+            // 锁定只管拖动，不管单击：否则锁上之后只能回主界面才能解锁。
+            if (!dragged) openSettings()
             return true
-        }
-
-        override fun onLongPress(e: MotionEvent) {
-            if (dragged) return
-            settings.locked = !settings.locked
-            Toast.makeText(
-                this@HudService,
-                if (settings.locked) R.string.overlay_locked_toast else R.string.overlay_unlocked_toast,
-                Toast.LENGTH_SHORT
-            ).show()
         }
     }
 
@@ -183,7 +176,10 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
         gestureDetector = GestureDetector(this, gestureListener)
         createViews()
         createNotificationChannel()
+        // 服务是 startForegroundService 拉起的，不在时限内进前台系统会直接抛异常，
+        // 所以先无条件 startForeground，再由 applyNotificationMode() 决定要不要把通知撤掉。
         startForeground(NOTIFICATION_ID, buildNotification())
+        applyNotificationMode()
         BatteryReader.logNodeProbe()
         Log.i(TAG, "服务启动，悬浮窗权限=${canShowOverlay()} 锁定=${settings.locked}")
     }
@@ -228,12 +224,14 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
-            Prefs.KEY_TEXT_COLOR, Prefs.KEY_TEXT_SIZE_SP, Prefs.KEY_BG_ALPHA_PCT -> applyTypography()
+            Prefs.KEY_TEXT_COLOR, Prefs.KEY_TEXT_SIZE_SP, Prefs.KEY_BG_ALPHA_PCT,
+            Prefs.KEY_SHOW_POWER, Prefs.KEY_SHOW_TEMP, Prefs.KEY_SHOW_VOLT, Prefs.KEY_SHOW_AMP -> applyTypography()
             Prefs.KEY_POS_X, Prefs.KEY_POS_Y, Prefs.KEY_POS_SAVED -> applyPosition()
             Prefs.KEY_REFRESH_MS -> {
                 handler.removeCallbacks(ticker)
                 handler.postDelayed(ticker, settings.refreshMillis.toLong())
             }
+            Prefs.KEY_RESIDENT_NOTIFICATION -> applyNotificationMode()
             Prefs.KEY_ENABLED -> if (!settings.enabled) stopSelf()
         }
     }
@@ -254,6 +252,8 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
 
         powerView = TextView(this).apply { includeFontPadding = false }
         tempView = TextView(this).apply { includeFontPadding = false }
+        voltView = TextView(this).apply { includeFontPadding = false }
+        ampView = TextView(this).apply { includeFontPadding = false }
 
         container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -261,6 +261,8 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
             setLayerType(LinearLayout.LAYER_TYPE_SOFTWARE, null)
             addView(tempView)
             addView(powerView)
+            addView(voltView)
+            addView(ampView)
         }
         grabView = View(this)
         root = FrameLayout(this).apply {
@@ -323,7 +325,7 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
     private fun applyTypography() {
         val sizeSp = settings.textSizeSp
         val color = settings.textColor
-        listOf(powerView, tempView).forEach { view ->
+        listOf(powerView, tempView, voltView, ampView).forEach { view ->
             view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
             view.setTextColor(color)
         }
@@ -334,6 +336,18 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
             setColor(withAlpha(Color.BLACK, settings.backgroundAlphaPercent / 100f))
         }
         container.background = background
+        applyFields()
+    }
+
+    /** 按勾选决定悬浮窗显示哪几行；一行都不勾时整个窗口收起，只留一块空底板没有意义。 */
+    private fun applyFields() {
+        tempView.visibility = if (settings.showTemp) View.VISIBLE else View.GONE
+        powerView.visibility = if (settings.showPower) View.VISIBLE else View.GONE
+        voltView.visibility = if (settings.showVoltage) View.VISIBLE else View.GONE
+        ampView.visibility = if (settings.showCurrent) View.VISIBLE else View.GONE
+        val anyShown = settings.showTemp || settings.showPower || settings.showVoltage || settings.showCurrent
+        root.visibility = if (anyShown) View.VISIBLE else View.INVISIBLE
+        if (anyShown) root.post { applyPanelOffset() }
     }
 
     private fun applyPosition() {
@@ -431,10 +445,12 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
         lastReading = reading
         powerView.text = reading.formatPower()
         tempView.text = reading.formatTemp()
+        voltView.text = if (reading.volts.isNaN()) "--" else String.format("%.2f V", reading.volts)
+        ampView.text = String.format("%.2f A", reading.amps)
         // 文字宽度会随读数变化，抓手区要跟上面板同宽。
         if (!dragging) applyPanelOffset()
         val now = SystemClock.elapsedRealtime()
-        if (now - lastNotifiedAt >= 2_000) {
+        if (settings.residentNotification && now - lastNotifiedAt >= 2_000) {
             lastNotifiedAt = now
             getSystemService(NotificationManager::class.java)
                 ?.notify(NOTIFICATION_ID, buildNotification())
@@ -494,6 +510,20 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
             PowerSource.UNKNOWN -> R.string.power_source_none
         }
     )
+
+    /**
+     * 常驻开关：开着就保持前台服务并刷新通知，关掉则退出前台态并撤销通知。
+     * 退出前台后悬浮窗还在，但系统随时可能回收后台进程，读数会停。
+     */
+    private fun applyNotificationMode() {
+        val manager = getSystemService(NotificationManager::class.java)
+        if (settings.residentNotification) {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            manager?.cancel(NOTIFICATION_ID)
+        }
+    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

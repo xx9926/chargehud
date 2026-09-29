@@ -21,6 +21,11 @@ object Prefs {
     const val KEY_AUTO_CAPACITY = "auto_capacity"
     const val KEY_DUAL_CELL = "dual_cell"
     const val KEY_HALF_VOLTAGE = "half_voltage"
+    const val KEY_RESIDENT_NOTIFICATION = "resident_notification"
+    const val KEY_SHOW_POWER = "show_power"
+    const val KEY_SHOW_TEMP = "show_temp"
+    const val KEY_SHOW_VOLT = "show_volt"
+    const val KEY_SHOW_AMP = "show_amp"
 
     const val MIN_TEXT_SP = 10f
     const val MAX_TEXT_SP = 40f
@@ -92,6 +97,28 @@ class HudConfig(context: Context) {
     var halfVoltage: Boolean
         get() = sp.getBoolean(Prefs.KEY_HALF_VOLTAGE, false)
         set(value) = sp.edit().putBoolean(Prefs.KEY_HALF_VOLTAGE, value).apply()
+
+    /** 关掉后服务退出前台态、通知撤销：通知栏不再常驻，代价是后台更容易被系统回收。 */
+    var residentNotification: Boolean
+        get() = sp.getBoolean(Prefs.KEY_RESIDENT_NOTIFICATION, true)
+        set(value) = sp.edit().putBoolean(Prefs.KEY_RESIDENT_NOTIFICATION, value).apply()
+
+    /** 悬浮窗上显示哪几行。四个全关掉时窗口收成不可见，不再留一个空底板。 */
+    var showPower: Boolean
+        get() = sp.getBoolean(Prefs.KEY_SHOW_POWER, true)
+        set(value) = sp.edit().putBoolean(Prefs.KEY_SHOW_POWER, value).apply()
+
+    var showTemp: Boolean
+        get() = sp.getBoolean(Prefs.KEY_SHOW_TEMP, true)
+        set(value) = sp.edit().putBoolean(Prefs.KEY_SHOW_TEMP, value).apply()
+
+    var showVoltage: Boolean
+        get() = sp.getBoolean(Prefs.KEY_SHOW_VOLT, false)
+        set(value) = sp.edit().putBoolean(Prefs.KEY_SHOW_VOLT, value).apply()
+
+    var showCurrent: Boolean
+        get() = sp.getBoolean(Prefs.KEY_SHOW_AMP, false)
+        set(value) = sp.edit().putBoolean(Prefs.KEY_SHOW_AMP, value).apply()
 
     fun rememberPosition(x: Int, y: Int) {
         sp.edit()

@@ -11,7 +11,7 @@
     <string name="action_lock">锁定</string>
     <string name="action_unlock">解锁</string>
 
-    <string name="overlay_locked_toast">已锁定：长按悬浮窗解锁</string>
+    <string name="overlay_locked_toast">已锁定：位置固定、拖不动</string>
     <string name="overlay_unlocked_toast">已解锁：可拖动到任意位置，含状态栏</string>
     <string name="overlay_permission_missing">请先授予“显示在其他应用上层”权限</string>
     <string name="overlay_add_failed">悬浮窗创建失败，请重新授予悬浮窗权限</string>
@@ -29,8 +29,11 @@
 
     <string name="service_running">运行中</string>
     <string name="service_stopped">未运行</string>
-    <string name="section_data">数据</string>
+    <string name="section_appearance">外观</string>
+    <string name="section_data">更多</string>
     <string name="section_position">位置</string>
-    <string name="live_reading_format">实时：%1$s / %2$s，电压 %3$s V，电流 %4$s A，来源 %5$s</string>
+    <string name="live_reading_format">实时：功率 %1$s，温度 %2$s，电压 %3$s V，电流 %4$s A</string>
+    <string name="lock_hint">锁定后悬浮窗位置固定、拖不动，单击仍可打开本页。</string>
+    <string name="resident_notification_hint">已退出常驻：通知栏里没有本服务的通知和按钮，系统也可能随时回收后台，悬浮窗会停更或消失。要恢复请把开关打开。</string>
     <string name="tip_miui">小米/HyperOS 提示：请在“应用管理 → 充电悬浮窗”中允许自启动，并把省电策略设为“无限制”，否则后台可能被清理。</string>
 </resources>

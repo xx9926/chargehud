@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.ComposeShader
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
@@ -37,7 +38,14 @@ object ColorPickerDialog {
         val hexInput = view.findViewById<EditText>(R.id.hexInput)
         val presetRow = view.findViewById<LinearLayout>(R.id.presetRow)
 
-        oldSwatch.setBackgroundColor(original)
+        val density = activity.resources.displayMetrics.density
+        fun paintSwatch(swatch: View, color: Int) {
+            swatch.background = GradientDrawable().apply {
+                cornerRadius = 12 * density
+                setColor(color)
+            }
+        }
+        paintSwatch(oldSwatch, original)
 
         var editingHex = false
         fun apply(color: Int, writeHex: Boolean) {
@@ -45,7 +53,7 @@ object ColorPickerDialog {
             Color.colorToHSV(color, hsv)
             svPanel.setHsv(hsv[0], hsv[1], hsv[2])
             hueBar.hue = hsv[0]
-            newSwatch.setBackgroundColor(color)
+            paintSwatch(newSwatch, color)
             if (writeHex) {
                 editingHex = true
                 hexInput.setText(String.format("%06X", color and 0xFFFFFF))
@@ -73,7 +81,6 @@ object ColorPickerDialog {
             }
         })
 
-        val density = activity.resources.displayMetrics.density
         listOf(Color.WHITE, Color.BLACK).forEach { color ->
             presetRow.addView(
                 View(activity).apply {
@@ -99,6 +106,7 @@ object ColorPickerDialog {
         }
         view.findViewById<View>(R.id.btnDone).setOnClickListener { dialog.dismiss() }
         dialog.show()
+        dialog.window?.setBackgroundDrawableResource(R.drawable.bg_picker_dialog)
     }
 }
 
@@ -111,6 +119,7 @@ class SvPanel(context: Context, attrs: AttributeSet? = null) : View(context, att
     private var value = 0f
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val clip = Path()
     private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 2.5f * context.resources.displayMetrics.density
@@ -137,19 +146,26 @@ class SvPanel(context: Context, attrs: AttributeSet? = null) : View(context, att
         val w = width.toFloat()
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
+        val corner = 22f * resources.displayMetrics.density
         fill.shader = ComposeShader(
             LinearGradient(0f, 0f, w, 0f, Color.WHITE, Color.HSVToColor(floatArrayOf(hue, 1f, 1f)), Shader.TileMode.CLAMP),
             LinearGradient(0f, 0f, 0f, h, 0x00000000, Color.BLACK, Shader.TileMode.CLAMP),
             PorterDuff.Mode.MULTIPLY
         )
-        canvas.drawRect(0f, 0f, w, h, fill)
+        canvas.drawRoundRect(0f, 0f, w, h, corner, corner, fill)
         fill.shader = null
         val radius = 8f * resources.displayMetrics.density
         val cx = saturation * w
         val cy = (1f - value) * h
         dot.color = Color.HSVToColor(floatArrayOf(hue, saturation, value))
+        // 选点贴着圆角时会被切掉一块，画在裁剪后的圆角区域内就不会露出方角。
+        clip.reset()
+        clip.addRoundRect(0f, 0f, w, h, corner, corner, Path.Direction.CW)
+        canvas.save()
+        canvas.clipPath(clip)
         canvas.drawCircle(cx, cy, radius, dot)
         canvas.drawCircle(cx, cy, radius, ring)
+        canvas.restore()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -180,6 +196,7 @@ class HueBar(context: Context, attrs: AttributeSet? = null) : View(context, attr
         strokeWidth = 3f * context.resources.displayMetrics.density
         color = Color.argb(200, 60, 60, 60)
     }
+    private val clip = Path()
 
     override fun onDraw(canvas: Canvas) {
         val w = width.toFloat()
@@ -194,10 +211,17 @@ class HueBar(context: Context, attrs: AttributeSet? = null) : View(context, attr
             null,
             Shader.TileMode.CLAMP
         )
-        canvas.drawRect(0f, 0f, w, h, fill)
+        // 色相条窄，圆角直接吃满半个宽度，两端就是胶囊形。
+        val corner = (w / 2f).coerceAtMost(15f * resources.displayMetrics.density)
+        canvas.drawRoundRect(0f, 0f, w, h, corner, corner, fill)
         fill.shader = null
         val y = hue / 360f * h
+        clip.reset()
+        clip.addRoundRect(0f, 0f, w, h, corner, corner, Path.Direction.CW)
+        canvas.save()
+        canvas.clipPath(clip)
         canvas.drawRect(0f, y - 5f, w, y + 5f, thumb)
+        canvas.restore()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
