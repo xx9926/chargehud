@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">充电悬浮窗</string>
+    <string name="tile_label">充电悬浮</string>
+
+    <string name="channel_name">悬浮窗服务</string>
+    <string name="channel_description">常驻通知，显示实时充电功率与电池温度</string>
+
+    <string name="notification_title">%1$s · %2$s</string>
+    <string name="action_hide">关闭悬浮窗</string>
+    <string name="action_lock">锁定</string>
+    <string name="action_unlock">解锁</string>
+
+    <string name="overlay_locked_toast">已锁定：长按悬浮窗解锁</string>
+    <string name="overlay_unlocked_toast">已解锁：可拖动到任意位置，含状态栏</string>
+    <string name="overlay_permission_missing">请先授予“显示在其他应用上层”权限</string>
+    <string name="overlay_add_failed">悬浮窗创建失败，请重新授予悬浮窗权限</string>
+
+    <string name="status_charging">充电中 %1$d%%</string>
+    <string name="status_net_discharge">已插电但电池在放电 %1$d%%</string>
+    <string name="status_unplugged">未充电 %1$d%%</string>
+    <string name="power_source_unknown">电流待测：估算需要连续观测约 40 秒</string>
+    <string name="power_source_detail">%1$s · %2$s</string>
+    <string name="power_source_framework">系统电流接口</string>
+    <string name="power_source_sysfs">sysfs 实测电流</string>
+    <string name="power_source_counter">库仑计差分</string>
+    <string name="power_source_estimated">电量变化率估算</string>
+    <string name="power_source_none">无电流数据</string>
+
+    <string name="service_running">运行中</string>
+    <string name="service_stopped">未运行</string>
+    <string name="section_data">数据</string>
+    <string name="section_position">位置</string>
+    <string name="live_reading_format">实时：%1$s / %2$s，电压 %3$s V，电流 %4$s A，来源 %5$s</string>
+    <string name="tip_miui">小米/HyperOS 提示：请在“应用管理 → 充电悬浮窗”中允许自启动，并把省电策略设为“无限制”，否则后台可能被清理。</string>
+</resources>
