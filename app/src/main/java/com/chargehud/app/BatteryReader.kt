@@ -41,7 +41,7 @@ class HudReading(
     val charging: Boolean get() = plugged != 0
     val hasPower: Boolean get() = source != PowerSource.UNKNOWN && !watts.isNaN()
 
-    /** 只有直接测到瞬时电流的来源不加约等号。符号保留：负值=已插电但电池在净放电。 */
+    /** 只有直接测到瞬时电流的来源不加约等号。正=电流流入电池（插电/充电），负=在放电。 */
     fun formatPower(): String =
         if (!hasPower) {
             "--"
@@ -71,6 +71,7 @@ object BatteryReader {
 
     private var lastLoggedSource: PowerSource? = null
     private var lastWatts = Double.NaN
+    private var lastDirection = Double.NaN
 
     private val CURRENT_PATHS = listOf(
         "/sys/class/power_supply/battery/current_now",
@@ -118,6 +119,7 @@ object BatteryReader {
         smoothedWatts = Double.NaN
         smoothedSource = null
         lastLoggedSource = null
+        lastDirection = Double.NaN
     }
 
     /** 服务启动时调用一次，把可访问的电流节点写进 logcat，方便判断这台机器能走哪条路。 */
@@ -168,6 +170,20 @@ object BatteryReader {
         val currentAverage = readProperty(batteryManager, BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)
         val counter = readProperty(batteryManager, BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
 
+        // 方向只信框架报的充电状态，不信 HAL 电流的正负号：这台天玑在 PC USB 上是脉冲充电，瞬时电流本身就在
+        // 正负交替（实测 +0.47 A ↔ -0.47 A），而均值要好几秒才把上一方向的样本冲掉，结果成了刚插上显示负、
+        // 刚拔掉显示正。幅值取绝对值，符号统一在这里盖掉。
+        val direction =
+            if (plugged != 0 || status == BatteryManager.BATTERY_STATUS_CHARGING) 1.0 else -1.0
+        if (direction != lastDirection) {
+            levelSamples.clear()
+            counterSamples.clear()
+            ampsSamples.clear()
+            smoothedWatts = Double.NaN
+            smoothedSource = null
+            lastDirection = direction
+        }
+
         var amps = Double.NaN
         var source = PowerSource.UNKNOWN
 
@@ -211,6 +227,7 @@ object BatteryReader {
         }
 
         val cellFactor = if (settings.dualCell) 2.0 else 1.0
+        if (!amps.isNaN()) amps = direction * abs(amps)
         val rawWatts = if (source == PowerSource.UNKNOWN) Double.NaN else volts * amps * cellFactor
         val watts = if (rawWatts.isNaN()) Double.NaN else smooth(rawWatts, source)
 
@@ -247,7 +264,7 @@ object BatteryReader {
         null
     }
 
-    /** 约定单位是 µA，但不少机型给 mA，取落在合理区间里的那种解释。保留符号，均值算完再取绝对值。 */
+    /** 约定单位是 µA，但不少机型给 mA，取落在合理区间里的那种解释。符号原样存进样本窗。 */
     private fun toAmps(rawValue: Int?): Double? {
         val value = rawValue?.toDouble() ?: return null
         val magnitude = abs(value)
@@ -258,12 +275,12 @@ object BatteryReader {
         return if (milli in MIN_AMPS..MAX_AMPS) value / 1_000.0 else null
     }
 
-    /** 框架瞬时电流逐秒采样很跳，取最近几秒的带符号均值，方向（充/放）要保留。 */
+    /** 框架瞬时电流逐秒采样很跳，取最近几秒的幅值均值；充/放电方向另按框架状态判定。 */
     private fun frameworkMean(): Double? {
         if (ampsSamples.isEmpty()) return null
-        val totalMicroAmps = ampsSamples.sumOf { it[1] }
+        val totalMicroAmps = ampsSamples.sumOf { abs(it[1]) }
         val mean = totalMicroAmps.toDouble() / ampsSamples.size / 1_000_000.0
-        return mean.takeIf { abs(it) in MIN_AMPS..MAX_AMPS }
+        return mean.takeIf { it in MIN_AMPS..MAX_AMPS }
     }
 
     /** PowerProfile 里的设计容量，反射失败返回 -1，此时退回设置里手填的容量。 */

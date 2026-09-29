@@ -476,8 +476,6 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
         )
 
         val status = when {
-            reading.charging && reading.watts < 0 ->
-                getString(R.string.status_net_discharge, reading.levelPercent)
             reading.charging -> getString(R.string.status_charging, reading.levelPercent)
             else -> getString(R.string.status_unplugged, reading.levelPercent)
         }

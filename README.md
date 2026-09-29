@@ -28,9 +28,10 @@
 
 第三方应用读不到真实的充电电流，本应用按可用性依次降级：
 
-1. **FRAMEWORK** — `BatteryManager.getIntProperty(BATTERY_PROPERTY_CURRENT_NOW)`，取最近几秒的**带符号均值**。
-   部分机型（如本机这颗天玑平台）在 PC USB 口上是脉冲充电，电流会正负交替，所以这里保留符号：
-   **功率显示为负数是正确行为**，代表这一段时间净能量是流出的。
+1. **FRAMEWORK** — `BatteryManager.getIntProperty(BATTERY_PROPERTY_CURRENT_NOW)`，取最近几秒的**电流幅值均值**。
+   正负号不信 HAL（本机这颗天玑在 PC USB 口上是脉冲充电，瞬时电流本身就在 +0.47 A ↔ −0.47 A 之间交替），
+   而是按框架报的充电状态统一盖：**插电 / 充电中显示正数，拔掉充电器后显示负数（电池在放电）**；
+   插拔瞬间会清空采样窗，不会把上一个方向的读数拖过来。
 2. **SYSTEM_FILE** — `/sys/class/power_supply/**/current_now`。绝大多数 ROM 已对普通应用关闭读取，
    需要在设置里手动开启，失败会自动降级。
 3. **CHARGE_COUNTER** — 用库仑计 `BATTERY_PROPERTY_CHARGE_COUNTER` 差分算电流。

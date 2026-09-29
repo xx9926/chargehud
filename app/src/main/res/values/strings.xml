@@ -17,7 +17,6 @@
     <string name="overlay_add_failed">悬浮窗创建失败，请重新授予悬浮窗权限</string>
 
     <string name="status_charging">充电中 %1$d%%</string>
-    <string name="status_net_discharge">已插电但电池在放电 %1$d%%</string>
     <string name="status_unplugged">未充电 %1$d%%</string>
     <string name="power_source_unknown">电流待测：估算需要连续观测约 40 秒</string>
     <string name="power_source_detail">%1$s · %2$s</string>
