@@ -65,8 +65,8 @@ release 目前借用 debug 密钥签名，否则产物未签名、无法装机�
 不想自己编译的话，直接下载 Release 里的安装包（约 1.9 MB）：
 
 - 最新版本列表：<https://github.com/xx9926/chargehud/releases/latest>
-- 当前最新 v1.3 直链：<https://github.com/xx9926/chargehud/releases/download/v1.3/chargehud-v1.3.apk>
-  （2,028,464 字节，MD5 `8ee77b41ac8ad11176d3633ae517ca3c`）
+- 当前最新 v1.4 直链：<https://github.com/xx9926/chargehud/releases/download/v1.4/chargehud-v1.4.apk>
+  （2,028,064 字节，MD5 `d633d31a6d12a5b5999498c8fef22221`）
 
 安装包用 **debug keystore** 签名（个人调试签名），把 apk 传到手机上点开安装即可；
 国内网络直连 GitHub 常被重置，下载时需要走代理。
@@ -74,7 +74,7 @@ release 目前借用 debug 密钥签名，否则产物未签名、无法装机�
 用 adb 安装：
 
 ```sh
-adb install -r -t chargehud-v1.3.apk
+adb install -r -t chargehud-v1.4.apk
 ```
 
 装好后打开「显示悬浮窗」开关即可。MIUI / HyperOS 上还需要注意三件事：
@@ -88,6 +88,7 @@ adb install -r -t chargehud-v1.3.apk
 
 | 版本 | 日期 | 说明 |
 | --- | --- | --- |
+| v1.4 | 2026-09-30 | 修复功率正负号随插拔颠倒：显示方向改由充电状态判定（插电 / 充电中为正，拔掉为负），采样窗在插拔瞬间清空，不再把上一个方向的读数拖过来 |
 | v1.3 | 2026-09-30 | 悬浮窗显示内容可选（功率 / 温度 / 电压 / 电流）；常驻通知可关；设置页三段可折叠；「位置」新增锁定开关并去掉长按锁定手势；修复磁贴要点开一次、再下拉才变蓝的问题；开关配色与取色弹窗圆角化 |
 | v1.2 | 2026-09-29 | 修复控制中心不列第三方磁贴：`TileService` 权限名应为 `BIND_QUICK_SETTINGS_TILE` |
 | v1.1 | 2026-09-29 | release 构建启用 R8 混淆，包体从 6.4 MB 降到 1.9 MB |
