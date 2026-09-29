@@ -3,6 +3,8 @@
 一个只有两个功能的 Android 小工具：把**实时充电功率（W）**和**电池温度（℃）**钉在屏幕最上层，
 方便插着充电器时直接看到当前充得多快、机身有多热。
 
+> 下载：**[Releases](https://github.com/xx9926/chargehud/releases/latest)** 里有可直接安装的 apk。
+
 - 两行悬浮窗，颜色 / 字号 / 底色 / 位置都可调
 - 拖动随意摆放，长按上锁防止误碰，单击回到设置页
 - 下拉状态栏磁贴「充电悬浮」，点一下开 / 关悬浮窗（Quick Settings Tile）
@@ -50,11 +52,21 @@ sh ./gradlew assembleDebug
 
 ## 安装与首次使用
 
+不想自己编译的话，直接下载 Release 里的安装包（约 6.4 MB）：
+
+- 最新版本列表：<https://github.com/xx9926/chargehud/releases>
+- 直链：<https://github.com/xx9926/chargehud/releases/download/v1.0/chargehud-v1.0.apk>
+
+安装包用 **debug keystore** 签名（个人调试签名），把 apk 传到手机上点开安装即可；
+国内网络直连 GitHub 常被重置，下载时需要走代理。
+
+用 adb 安装：
+
 ```sh
-adb install -r -t app/build/outputs/apk/debug/app-debug.apk
+adb install -r -t chargehud-v1.0.apk
 ```
 
-打开「显示悬浮窗」开关即可。MIUI / HyperOS 需要在应用信息里放行
+装好后打开「显示悬浮窗」开关即可。MIUI / HyperOS 需要在应用信息里放行
 「显示悬浮窗」和「自启动」，并把本应用设为电池优化不限制，否则后台服务会被回收。
 
 ## 目录结构
