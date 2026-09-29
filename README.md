@@ -46,16 +46,23 @@
 ```sh
 sh ./gradlew assembleDebug
 # 产物：app/build/outputs/apk/debug/app-debug.apk
+
+sh ./gradlew assembleRelease
+# 产物：app/build/outputs/apk/release/app-release.apk —— R8 混淆 + 优化，约 1.9 MB
 ```
+
+release 构建启用了 R8（`proguard-android-optimize.txt` + `app/proguard-rules.pro`）。
+四个 manifest 组件由 AGP 自动 keep，反射只指向框架类 `PowerProfile`，因此不需要额外 keep 规则。
+release 目前借用 debug 密钥签名，否则产物未签名、无法装机；换正式密钥请先建 keystore 并配 `signingConfig`。
 
 离线环境下加 `--offline`（依赖需已在本机 Gradle 缓存中）。
 
 ## 安装与首次使用
 
-不想自己编译的话，直接下载 Release 里的安装包（约 6.4 MB）：
+不想自己编译的话，直接下载 Release 里的安装包（约 1.9 MB）：
 
-- 最新版本列表：<https://github.com/xx9926/chargehud/releases>
-- 直链：<https://github.com/xx9926/chargehud/releases/download/v1.0/chargehud-v1.0.apk>
+- 最新版本列表：<https://github.com/xx9926/chargehud/releases/latest>
+- 直链：<https://github.com/xx9926/chargehud/releases/download/v1.1/chargehud-v1.1.apk>
 
 安装包用 **debug keystore** 签名（个人调试签名），把 apk 传到手机上点开安装即可；
 国内网络直连 GitHub 常被重置，下载时需要走代理。
@@ -63,7 +70,7 @@ sh ./gradlew assembleDebug
 用 adb 安装：
 
 ```sh
-adb install -r -t chargehud-v1.0.apk
+adb install -r -t chargehud-v1.1.apk
 ```
 
 装好后打开「显示悬浮窗」开关即可。MIUI / HyperOS 需要在应用信息里放行
