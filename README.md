@@ -27,7 +27,7 @@
 第三方应用读不到真实的充电电流，本应用按可用性依次降级：
 
 1. **FRAMEWORK** — `BatteryManager.getIntProperty(BATTERY_PROPERTY_CURRENT_NOW)`，取最近几秒的**带符号均值**。
-   部分机型（如 Redmi 12C 的 MTK 平台）在 PC USB 口上是脉冲充电，电流会正负交替，所以这里保留符号：
+   部分机型（如本机这颗天玑平台）在 PC USB 口上是脉冲充电，电流会正负交替，所以这里保留符号：
    **功率显示为负数是正确行为**，代表这一段时间净能量是流出的。
 2. **SYSTEM_FILE** — `/sys/class/power_supply/**/current_now`。绝大多数 ROM 已对普通应用关闭读取，
    需要在设置里手动开启，失败会自动降级。
@@ -37,7 +37,7 @@
 电压来自 `EXTRA_VOLTAGE`（mV），温度来自 `EXTRA_TEMPERATURE`（0.1 ℃），
 标称容量通过反射 `PowerProfile.getAveragePower("battery.capacity")` 获取，失败时可手填。
 
-已验证机型：Redmi 12C（M2104K10AC，Android 14 / HyperOS V14.0.8.0），1080×2400，density 2.75。
+已验证机型：Redmi Note 10 Pro（M2104K10AC / chopin，Android 13，HyperOS V14.0.8.0.TKPCNXM），1080×2400，440 dpi。
 
 ## 构建
 
@@ -62,7 +62,7 @@ release 目前借用 debug 密钥签名，否则产物未签名、无法装机�
 不想自己编译的话，直接下载 Release 里的安装包（约 1.9 MB）：
 
 - 最新版本列表：<https://github.com/xx9926/chargehud/releases/latest>
-- 直链：<https://github.com/xx9926/chargehud/releases/download/v1.1/chargehud-v1.1.apk>
+- 直链：<https://github.com/xx9926/chargehud/releases/download/v1.2/chargehud-v1.2.apk>
 
 安装包用 **debug keystore** 签名（个人调试签名），把 apk 传到手机上点开安装即可；
 国内网络直连 GitHub 常被重置，下载时需要走代理。
@@ -70,11 +70,15 @@ release 目前借用 debug 密钥签名，否则产物未签名、无法装机�
 用 adb 安装：
 
 ```sh
-adb install -r -t chargehud-v1.1.apk
+adb install -r -t chargehud-v1.2.apk
 ```
 
-装好后打开「显示悬浮窗」开关即可。MIUI / HyperOS 需要在应用信息里放行
-「显示悬浮窗」和「自启动」，并把本应用设为电池优化不限制，否则后台服务会被回收。
+装好后打开「显示悬浮窗」开关即可。MIUI / HyperOS 上还需要注意三件事：
+
+- **通知默认是关的**：应用信息 → 通知管理 → 打开「允许通知」，否则常驻通知不显示，
+  通知上的「关闭悬浮窗 / 锁定」按钮也就看不到。
+- **磁贴要手动添加**：下拉控制中心 → 编辑 → 在「未添加开关」里点一下「充电悬浮」即可加入。
+- 放行「显示悬浮窗」和「自启动」，并把电池优化设为不限制，否则后台服务会被回收。
 
 ## 目录结构
 
@@ -85,7 +89,7 @@ app/src/main/java/com/chargehud/app/
 ├── BatteryReader.kt        取数与降级逻辑
 ├── Prefs.kt               SharedPreferences 封装
 ├── ColorPickerDialog.kt   SV 方块 + 色相条取色弹窗
-├── HudTileService.kt      通知栏磁贴
+├── HudTileService.kt      下拉控制中心磁贴（Quick Settings Tile）
 └── BootReceiver.kt        开机恢复
 ```
 
