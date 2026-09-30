@@ -67,6 +67,11 @@ object BatteryReader {
     private const val UNSUPPORTED = Int.MIN_VALUE
     private const val MIN_AMPS = 0.0005
     private const val MAX_AMPS = 8.0
+    private const val JUMP_RATIO = 2.0
+    private const val JUMP_UP_MIN_DELTA_AMPS = 0.3
+    private const val JUMP_DOWN_MIN_DELTA_AMPS = 0.5
+    private const val JUMP_MIN_MAGNITUDE_AMPS = 0.3
+    private const val JUMP_MIN_SAMPLES = 3
     private const val TAG = "ChargeHud"
 
     private var lastLoggedSource: PowerSource? = null
@@ -189,9 +194,22 @@ object BatteryReader {
 
         val frameworkAmps = toAmps(currentNow) ?: toAmps(currentAverage)
         if (frameworkAmps != null) {
-            ampsSamples.addLast(
-                longArrayOf(SystemClock.elapsedRealtime(), (frameworkAmps * 1_000_000).toLong())
+            val sample = longArrayOf(
+                SystemClock.elapsedRealtime(),
+                (frameworkAmps * 1_000_000).toLong()
             )
+            // 6 秒幅值均值窗会把变化前的小电流样本混进来稀释：实测插大功率充电器时硬件很快就到
+            // 满幅，显示功率却从 1.89 W 爬 6 秒才到 7.88 W；拔掉充电器也反向爬 6 秒。幅值成倍跳档
+            // 判定为插拔/充电器换挡，窗口只留这一条样本；小幅波动继续交给均值抗抖。
+            val previousMean = windowMean()
+            val magnitude = abs(frameworkAmps)
+            val levelChanged = previousMean != null &&
+                isLevelChange(previousMean, magnitude, ampsSamples.size)
+            ampsSamples.addLast(sample)
+            if (levelChanged) {
+                ampsSamples.clear()
+                ampsSamples.addLast(sample)
+            }
         }
         val windowStart = SystemClock.elapsedRealtime() - FRAMEWORK_WINDOW_MS
         while (ampsSamples.isNotEmpty() && ampsSamples.first()[0] < windowStart) {
@@ -276,11 +294,30 @@ object BatteryReader {
     }
 
     /** 框架瞬时电流逐秒采样很跳，取最近几秒的幅值均值；充/放电方向另按框架状态判定。 */
-    private fun frameworkMean(): Double? {
+    private fun frameworkMean(): Double? = windowMean()?.takeIf { it in MIN_AMPS..MAX_AMPS }
+
+    /** 窗口内幅值均值，不做合法区间过滤，供突变判定使用。 */
+    private fun windowMean(): Double? {
         if (ampsSamples.isEmpty()) return null
         val totalMicroAmps = ampsSamples.sumOf { abs(it[1]) }
-        val mean = totalMicroAmps.toDouble() / ampsSamples.size / 1_000_000.0
-        return mean.takeIf { it in MIN_AMPS..MAX_AMPS }
+        return totalMicroAmps.toDouble() / ampsSamples.size / 1_000_000.0
+    }
+
+    /**
+     * 幅值是否跳了一个档位。向下的门槛比向上严：PC USB 脉冲充电时电流会偶发 dip 到均值的 0.4 倍
+     * （实测 0.5 A → 0.18 A），但绝对落差只有 0.3 A；真换档（拔充电器）的落差在 1 A 以上，
+     * 0.5 A 的地板能把两者分开。
+     *
+     * 低于 0.3 A 的样本不采信：放电本身就带 0.1 A 左右的低幅值（PC USB 待机 0.0x A、拔线后脉冲的
+     * 低点 0.08 A），拿它单独定档会让显示瞬间掉到接近 0（实测 −7.47 W 直通成 −0.36 W 再弹回 −2.3 W）。
+     */
+    private fun isLevelChange(mean: Double, magnitude: Double, sampleCount: Int): Boolean {
+        if (sampleCount < JUMP_MIN_SAMPLES || magnitude < JUMP_MIN_MAGNITUDE_AMPS) return false
+        return if (magnitude >= mean) {
+            magnitude >= mean * JUMP_RATIO && magnitude - mean >= JUMP_UP_MIN_DELTA_AMPS
+        } else {
+            mean >= magnitude * JUMP_RATIO && mean - magnitude >= JUMP_DOWN_MIN_DELTA_AMPS
+        }
     }
 
     /** PowerProfile 里的设计容量，反射失败返回 -1，此时退回设置里手填的容量。 */
