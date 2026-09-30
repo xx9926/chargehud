@@ -82,7 +82,7 @@ sh ./gradlew assembleDebug
 # 产物：app/build/outputs/apk/debug/app-debug.apk
 
 sh ./gradlew assembleRelease
-# 产物：app/build/outputs/apk/release/app-release.apk —— R8 混淆 + 优化，约 1.9 MB
+# 产物：app/build/outputs/apk/release/app-release.apk —— R8 混淆 + 优化，约 2.0 MB
 ```
 
 release 构建启用了 R8（`proguard-android-optimize.txt` + `app/proguard-rules.pro`）。
@@ -93,11 +93,11 @@ release 目前借用 debug 密钥签名，否则产物未签名、无法装机�
 
 ## 安装与首次使用
 
-不想自己编译的话，直接下载 Release 里的安装包（约 1.9 MB）：
+不想自己编译的话，直接下载 Release 里的安装包（约 2.0 MB）：
 
 - 最新版本列表：<https://github.com/xx9926/chargehud/releases/latest>
-- 当前最新 v1.6 直链：<https://github.com/xx9926/chargehud/releases/download/v1.6/chargehud-v1.6.apk>
-  （2,029,976 字节，MD5 `ab37e5d26a82529b72bff111c68e0080`）
+- 当前最新 v1.7 直链：<https://github.com/xx9926/chargehud/releases/download/v1.7/chargehud-v1.7.apk>
+  （2,052,648 字节，MD5 `c4b750fd17c44f236f129861d01cabf8`）
 
 安装包用 **debug keystore** 签名（个人调试签名），把 apk 传到手机上点开安装即可；
 国内网络直连 GitHub 常被重置，下载时需要走代理。
@@ -105,7 +105,7 @@ release 目前借用 debug 密钥签名，否则产物未签名、无法装机�
 用 adb 安装：
 
 ```sh
-adb install -r -t chargehud-v1.6.apk
+adb install -r -t chargehud-v1.7.apk
 ```
 
 装好后打开「显示悬浮窗」开关即可。MIUI / HyperOS 上还需要注意三件事：
@@ -119,6 +119,7 @@ adb install -r -t chargehud-v1.6.apk
 
 | 版本 | 日期 | 说明 |
 | --- | --- | --- |
+| v1.7 | 2026-10-01 | 新增「档案」：每次充电记一条（时长 / 起止电量 / 峰值与均值功率 / 电流积分出的 mAh / 温度峰值）并画出功率与电量随时间的折线图，只存本机；新增四条充电提醒（高温、慢充、涓流、充满，独立通知渠道，每次插电各最多一次）；档案页改成 iOS 式横向推移进出场并支持整页跟手右滑返回；去掉常驻通知下方的代价说明 |
 | v1.6 | 2026-09-30 | 修复功率随插拔慢爬 6 秒：电流幅值跳档（≥ 均值 2 倍且向上差 ≥ 0.3 A / 向下差 ≥ 0.5 A，新样本 ≥ 0.3 A）时采样窗立即直通，实测插大功率充电器当帧即显示 7.3 W、拔线 1.3 秒回到放电真值，小幅脉冲抖动仍由均值抑制 |
 | v1.5 | 2026-09-30 | 悬浮窗各行的顺序改为跟随勾选字段的先后顺序（取消再勾回来排到最后，老数据按默认顺序补齐）；「外观」里文字颜色移到底板透明度之后并改名「悬浮窗透明度」；「位置」的 ▲▼◀▶ 加灰色描边框出可点区域；去掉自启动提示里的机型前缀 |
 | v1.4 | 2026-09-30 | 修复功率正负号随插拔颠倒：显示方向改由充电状态判定（插电 / 充电中为正，拔掉为负），采样窗在插拔瞬间清空，不再把上一个方向的读数拖过来 |
