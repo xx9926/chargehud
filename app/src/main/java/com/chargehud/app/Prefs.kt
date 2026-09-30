@@ -26,6 +26,7 @@ object Prefs {
     const val KEY_SHOW_TEMP = "show_temp"
     const val KEY_SHOW_VOLT = "show_volt"
     const val KEY_SHOW_AMP = "show_amp"
+    const val KEY_FIELD_ORDER = "field_order"
 
     const val MIN_TEXT_SP = 10f
     const val MAX_TEXT_SP = 40f
@@ -120,11 +121,59 @@ class HudConfig(context: Context) {
         get() = sp.getBoolean(Prefs.KEY_SHOW_AMP, false)
         set(value) = sp.edit().putBoolean(Prefs.KEY_SHOW_AMP, value).apply()
 
+    /**
+     * 悬浮窗的行顺序 = 用户勾选这些字段的先后顺序。老数据里没有这个键，
+     * 或勾选项没被记进顺序表时，按默认顺序（温度、功率、电压、电流）补到末尾。
+     */
+    var fieldOrder: List<String>
+        get() {
+            val stored = sp.getString(Prefs.KEY_FIELD_ORDER, "")
+                ?.split(SEPARATOR)
+                ?.filter { it in FIELD_IDS && fieldShown(it) }
+                ?: emptyList()
+            val untracked = FIELD_IDS.filter { fieldShown(it) && it !in stored }
+            return stored + untracked
+        }
+        set(value) = sp.edit().putString(Prefs.KEY_FIELD_ORDER, value.joinToString(SEPARATOR)).apply()
+
+    fun fieldShown(id: String): Boolean = when (id) {
+        FIELD_POWER -> showPower
+        FIELD_TEMP -> showTemp
+        FIELD_VOLT -> showVoltage
+        FIELD_AMP -> showCurrent
+        else -> false
+    }
+
+    /** 勾上排到最后、取消勾选移出顺序表，取消后再勾回来就重新排队。 */
+    fun setFieldShown(id: String, shown: Boolean) {
+        when (id) {
+            FIELD_POWER -> showPower = shown
+            FIELD_TEMP -> showTemp = shown
+            FIELD_VOLT -> showVoltage = shown
+            FIELD_AMP -> showCurrent = shown
+        }
+        fieldOrder = fieldOrder.toMutableList().apply {
+            remove(id)
+            if (shown) add(id)
+        }
+    }
+
     fun rememberPosition(x: Int, y: Int) {
         sp.edit()
             .putInt(Prefs.KEY_POS_X, x)
             .putInt(Prefs.KEY_POS_Y, y)
             .putBoolean(Prefs.KEY_POS_SAVED, true)
             .apply()
+    }
+
+    companion object {
+        const val FIELD_POWER = "power"
+        const val FIELD_TEMP = "temp"
+        const val FIELD_VOLT = "volt"
+        const val FIELD_AMP = "amp"
+
+        /** 没勾选过任何顺序时的排列：温度在上、功率在下。 */
+        private val FIELD_IDS = listOf(FIELD_TEMP, FIELD_POWER, FIELD_VOLT, FIELD_AMP)
+        private const val SEPARATOR = ","
     }
 }

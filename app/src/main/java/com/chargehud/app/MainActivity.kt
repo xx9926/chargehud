@@ -155,10 +155,19 @@ class MainActivity : AppCompatActivity() {
         switchLocked.setOnCheckedChangeListener { _, checked ->
             if (!updatingUi) config.locked = checked
         }
-        checkShowPower.setOnCheckedChangeListener { _, checked -> if (!updatingUi) config.showPower = checked }
-        checkShowTemp.setOnCheckedChangeListener { _, checked -> if (!updatingUi) config.showTemp = checked }
-        checkShowVolt.setOnCheckedChangeListener { _, checked -> if (!updatingUi) config.showVoltage = checked }
-        checkShowAmp.setOnCheckedChangeListener { _, checked -> if (!updatingUi) config.showCurrent = checked }
+        // 勾选的先后顺序就是悬浮窗里各行的排列顺序
+        checkShowPower.setOnCheckedChangeListener { _, checked ->
+            if (!updatingUi) config.setFieldShown(HudConfig.FIELD_POWER, checked)
+        }
+        checkShowTemp.setOnCheckedChangeListener { _, checked ->
+            if (!updatingUi) config.setFieldShown(HudConfig.FIELD_TEMP, checked)
+        }
+        checkShowVolt.setOnCheckedChangeListener { _, checked ->
+            if (!updatingUi) config.setFieldShown(HudConfig.FIELD_VOLT, checked)
+        }
+        checkShowAmp.setOnCheckedChangeListener { _, checked ->
+            if (!updatingUi) config.setFieldShown(HudConfig.FIELD_AMP, checked)
+        }
 
         seekTextSize.setOnSeekBarChangeListener(object : SimpleSeekListener() {
             override fun onValueChanged(bar: SeekBar, progress: Int) {

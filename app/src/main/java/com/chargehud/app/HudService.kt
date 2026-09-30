@@ -224,8 +224,9 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
-            Prefs.KEY_TEXT_COLOR, Prefs.KEY_TEXT_SIZE_SP, Prefs.KEY_BG_ALPHA_PCT,
-            Prefs.KEY_SHOW_POWER, Prefs.KEY_SHOW_TEMP, Prefs.KEY_SHOW_VOLT, Prefs.KEY_SHOW_AMP -> applyTypography()
+            Prefs.KEY_TEXT_COLOR, Prefs.KEY_TEXT_SIZE_SP, Prefs.KEY_BG_ALPHA_PCT -> applyTypography()
+            Prefs.KEY_SHOW_POWER, Prefs.KEY_SHOW_TEMP, Prefs.KEY_SHOW_VOLT, Prefs.KEY_SHOW_AMP,
+            Prefs.KEY_FIELD_ORDER -> applyFields()
             Prefs.KEY_POS_X, Prefs.KEY_POS_Y, Prefs.KEY_POS_SAVED -> applyPosition()
             Prefs.KEY_REFRESH_MS -> {
                 handler.removeCallbacks(ticker)
@@ -339,15 +340,23 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
         applyFields()
     }
 
-    /** 按勾选决定悬浮窗显示哪几行；一行都不勾时整个窗口收起，只留一块空底板没有意义。 */
+    /** 显示哪几行由勾选决定，行的先后就是勾选的先后；一行都不勾时整个窗口收起，只留一块空底板没有意义。 */
     private fun applyFields() {
-        tempView.visibility = if (settings.showTemp) View.VISIBLE else View.GONE
-        powerView.visibility = if (settings.showPower) View.VISIBLE else View.GONE
-        voltView.visibility = if (settings.showVoltage) View.VISIBLE else View.GONE
-        ampView.visibility = if (settings.showCurrent) View.VISIBLE else View.GONE
-        val anyShown = settings.showTemp || settings.showPower || settings.showVoltage || settings.showCurrent
-        root.visibility = if (anyShown) View.VISIBLE else View.INVISIBLE
-        if (anyShown) root.post { applyPanelOffset() }
+        val rows = mapOf(
+            HudConfig.FIELD_TEMP to tempView,
+            HudConfig.FIELD_POWER to powerView,
+            HudConfig.FIELD_VOLT to voltView,
+            HudConfig.FIELD_AMP to ampView,
+        )
+        val order = settings.fieldOrder
+        container.removeAllViews()
+        order.forEach { id ->
+            val row = rows[id] ?: return@forEach
+            row.visibility = View.VISIBLE
+            container.addView(row)
+        }
+        root.visibility = if (order.isEmpty()) View.INVISIBLE else View.VISIBLE
+        if (order.isNotEmpty()) root.post { applyPanelOffset() }
     }
 
     private fun applyPosition() {
