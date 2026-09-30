@@ -270,6 +270,15 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/archiveHeader"
+            style="@style/SectionLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:text="@string/section_archive" />
+
+        <TextView
             android:id="@+id/dataHeader"
             style="@style/SectionLabel"
             android:layout_width="match_parent"
@@ -380,14 +389,117 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="27dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="高温提醒"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/alertTempValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:minWidth="76dp"
+                    android:gravity="end"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="27dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="慢充提醒"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/alertSlowValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:minWidth="76dp"
+                    android:gravity="end"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
             <TextView
-                android:id="@+id/residentNotificationHint"
                 style="@style/RowLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/resident_notification_hint"
-                android:textSize="13sp"
-                android:visibility="gone" />
+                android:text="电量 80% 以后功率本来就会降下来，那种情况不算充不进电，慢充提醒不会响。"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="27dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="涓流提醒"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/alertTrickleValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:minWidth="76dp"
+                    android:gravity="end"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="27dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="充满提醒"
+                    android:textSize="15sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchAlertFull"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/RowLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="提醒走独立通知渠道，跟常驻通知无关；只有悬浮窗服务在跑的时候才会判定。"
+                android:textSize="13sp" />
 
             <TextView
                 style="@style/RowLabel"

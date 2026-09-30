@@ -9,8 +9,13 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
-    <style name="ChargeHudSwitch" parent="Widget.AppCompat.CompoundButton.Switch">
-        <item name="thumbTint">@color/switch_thumb</item>
+    <!-- 档案页要跟手往右拖出去，窗口必须半透明：否则拖开的缝隙里只剩纯色底板，看不到下面的设置页。 -->
+    <style name="Theme.ChargeHud.Archive" parent="Theme.ChargeHud">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="ChargeHudSwitch" parent="Widget.AppCompat.CompoundButton.Switch">        <item name="thumbTint">@color/switch_thumb</item>
         <item name="trackTint">@color/switch_track</item>
     </style>
 

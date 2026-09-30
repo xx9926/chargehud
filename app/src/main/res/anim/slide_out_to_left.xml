@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 新页推入时，下面的页面被带着向左退一点，不是整页滑走 —— iOS 的视差感就在这里。 -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/decelerate_interpolator">
+    <translate
+        android:duration="280"
+        android:fromXDelta="0"
+        android:toXDelta="-25%p" />
+</set>

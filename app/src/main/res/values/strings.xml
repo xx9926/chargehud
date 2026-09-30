@@ -6,6 +6,17 @@
     <string name="channel_name">悬浮窗服务</string>
     <string name="channel_description">常驻通知，显示实时充电功率与电池温度</string>
 
+    <string name="alert_channel_name">充电提醒</string>
+    <string name="alert_channel_description">电池温度过高、插电很久仍充得慢时提醒</string>
+    <string name="alert_temp_title">电池温度 %1$s ℃</string>
+    <string name="alert_temp_body">已超过设定的 %1$d ℃ 阈值。摘掉手机壳、停止边充边玩，或换低一档功率的充电器，都会降得快些。</string>
+    <string name="alert_slow_title">充电很慢</string>
+    <string name="alert_full_title">充电已完成</string>
+    <string name="alert_full_body">电量 %1$d%%，可以拔掉充电器了。一直插着会让电池长时间停在高压状态。</string>
+    <string name="alert_trickle_title">已进入涓流充电</string>
+    <string name="alert_trickle_body">电量 %1$d%%，功率只剩 %2$s W，快充已经结束，现在是慢速补满最后一点容量。</string>
+    <string name="alert_slow_body">插电已满 %3$d 分钟，近一分钟平均只有 %1$s W，低于设定的 %2$d W。可能是充电器功率不够、线材或接口接触不良，也可能是手机端在限流。</string>
+
     <string name="notification_title">%1$s · %2$s</string>
     <string name="action_hide">关闭悬浮窗</string>
     <string name="action_lock">锁定</string>
@@ -31,8 +42,8 @@
     <string name="section_appearance">外观</string>
     <string name="section_data">更多</string>
     <string name="section_position">位置</string>
+    <string name="section_archive">档案</string>
     <string name="live_reading_format">实时：功率 %1$s，温度 %2$s，电压 %3$s V，电流 %4$s A</string>
     <string name="lock_hint">锁定后悬浮窗位置固定、拖不动，单击仍可打开本页。</string>
-    <string name="resident_notification_hint">已退出常驻：通知栏里没有本服务的通知和按钮，系统也可能随时回收后台，悬浮窗会停更或消失。要恢复请把开关打开。</string>
     <string name="tip_miui">请在“应用管理 → 充电悬浮窗”中允许自启动，并把省电策略设为“无限制”，否则后台可能被清理。</string>
 </resources>

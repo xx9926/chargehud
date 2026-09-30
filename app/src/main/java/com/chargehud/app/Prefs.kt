@@ -3,6 +3,7 @@ package com.chargehud.app
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.util.TypedValue
 
 object Prefs {
     const val FILE = "charge_hud"
@@ -27,6 +28,10 @@ object Prefs {
     const val KEY_SHOW_VOLT = "show_volt"
     const val KEY_SHOW_AMP = "show_amp"
     const val KEY_FIELD_ORDER = "field_order"
+    const val KEY_ALERT_TEMP_C = "alert_temp_c"
+    const val KEY_ALERT_SLOW_W = "alert_slow_w"
+    const val KEY_ALERT_FULL = "alert_full"
+    const val KEY_ALERT_TRICKLE_W = "alert_trickle_w"
 
     const val MIN_TEXT_SP = 10f
     const val MAX_TEXT_SP = 40f
@@ -124,8 +129,7 @@ class HudConfig(context: Context) {
     /**
      * 悬浮窗的行顺序 = 用户勾选这些字段的先后顺序。老数据里没有这个键，
      * 或勾选项没被记进顺序表时，按默认顺序（温度、功率、电压、电流）补到末尾。
-     */
-    var fieldOrder: List<String>
+     */    var fieldOrder: List<String>
         get() {
             val stored = sp.getString(Prefs.KEY_FIELD_ORDER, "")
                 ?.split(SEPARATOR)
@@ -135,6 +139,26 @@ class HudConfig(context: Context) {
             return stored + untracked
         }
         set(value) = sp.edit().putString(Prefs.KEY_FIELD_ORDER, value.joinToString(SEPARATOR)).apply()
+
+    /** 电池温度提醒阈值（℃），0 表示不提醒。 */
+    var alertTempCelsius: Int
+        get() = sp.getInt(Prefs.KEY_ALERT_TEMP_C, DEFAULT_ALERT_TEMP_C)
+        set(value) = sp.edit().putInt(Prefs.KEY_ALERT_TEMP_C, value.coerceIn(0, 60)).apply()
+
+    /** 慢充提醒：插电满 5 分钟后近一分钟均功率低于这个瓦特数就提醒，0 表示不提醒。 */
+    var alertSlowWatts: Int
+        get() = sp.getInt(Prefs.KEY_ALERT_SLOW_W, 0)
+        set(value) = sp.edit().putInt(Prefs.KEY_ALERT_SLOW_W, value.coerceIn(0, 20)).apply()
+
+    /** 充满提醒：框架报 FULL 或电量到 100% 时提醒一次，每次插电重新计。 */
+    var alertFullEnabled: Boolean
+        get() = sp.getBoolean(Prefs.KEY_ALERT_FULL, true)
+        set(value) = sp.edit().putBoolean(Prefs.KEY_ALERT_FULL, value).apply()
+
+    /** 涓流提醒：电量到 80% 以上、近一分钟均功率低于这个瓦特数时提醒一次，0 表示不提醒。 */
+    var alertTrickleWatts: Int
+        get() = sp.getInt(Prefs.KEY_ALERT_TRICKLE_W, DEFAULT_ALERT_TRICKLE_W)
+        set(value) = sp.edit().putInt(Prefs.KEY_ALERT_TRICKLE_W, value.coerceIn(0, 20)).apply()
 
     fun fieldShown(id: String): Boolean = when (id) {
         FIELD_POWER -> showPower
@@ -175,5 +199,21 @@ class HudConfig(context: Context) {
         /** 没勾选过任何顺序时的排列：温度在上、功率在下。 */
         private val FIELD_IDS = listOf(FIELD_TEMP, FIELD_POWER, FIELD_VOLT, FIELD_AMP)
         private const val SEPARATOR = ","
+
+        /** 天玑平台实测：大功率快充时机身 39~41 ℃ 属正常，42 ℃ 以上才值得提醒。 */
+        const val DEFAULT_ALERT_TEMP_C = 42
+
+        /** 本机满充段实测功率只有 7~8 W，涓流一般在 3 W 以下。 */
+        const val DEFAULT_ALERT_TRICKLE_W = 3
+    }
+}
+
+/** selectableItemBackground 是主题属性，要先解析出它指向的 drawable id 才能 setBackgroundResource。 */
+fun Context.selectableItemBackground(): Int {
+    val value = TypedValue()
+    return if (theme.resolveAttribute(android.R.attr.selectableItemBackground, value, true)) {
+        value.resourceId
+    } else {
+        0
     }
 }

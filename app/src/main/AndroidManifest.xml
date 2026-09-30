@@ -29,6 +29,13 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ArchiveActivity"
+            android:exported="false"
+            android:label="档案"
+            android:theme="@style/Theme.ChargeHud.Archive"
+            android:parentActivityName=".MainActivity" />
+
         <service
             android:name=".HudService"
             android:exported="false"

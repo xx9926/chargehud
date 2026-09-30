@@ -1,16 +1,24 @@
 package com.chargehud.app
 
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.appcompat.widget.SwitchCompat
 import kotlin.math.roundToInt
 
@@ -30,7 +38,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var checkShowTemp: CheckBox
     private lateinit var checkShowVolt: CheckBox
     private lateinit var checkShowAmp: CheckBox
-    private lateinit var residentNotificationHint: TextView
+    private lateinit var archiveHeader: TextView
+    private lateinit var alertTempValue: TextView
+    private lateinit var alertSlowValue: TextView
+    private lateinit var alertTrickleValue: TextView
+    private lateinit var switchAlertFull: SwitchCompat
     private lateinit var btnPalette: Button
     private lateinit var appearanceHeader: TextView
     private lateinit var appearanceSection: LinearLayout
@@ -88,7 +100,11 @@ class MainActivity : AppCompatActivity() {
         checkShowTemp = findViewById(R.id.checkShowTemp)
         checkShowVolt = findViewById(R.id.checkShowVolt)
         checkShowAmp = findViewById(R.id.checkShowAmp)
-        residentNotificationHint = findViewById(R.id.residentNotificationHint)
+        archiveHeader = findViewById(R.id.archiveHeader)
+        alertTempValue = findViewById(R.id.alertTempValue)
+        alertSlowValue = findViewById(R.id.alertSlowValue)
+        alertTrickleValue = findViewById(R.id.alertTrickleValue)
+        switchAlertFull = findViewById(R.id.switchAlertFull)
         btnPalette = findViewById(R.id.btnPalette)
         appearanceHeader = findViewById(R.id.appearanceHeader)
         appearanceSection = findViewById(R.id.appearanceSection)
@@ -147,13 +163,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
         switchResidentNotification.setOnCheckedChangeListener { _, checked ->
-            if (!updatingUi) {
-                config.residentNotification = checked
-                syncResidentHint()
-            }
+            if (!updatingUi) config.residentNotification = checked
         }
         switchLocked.setOnCheckedChangeListener { _, checked ->
             if (!updatingUi) config.locked = checked
+        }
+        switchAlertFull.setOnCheckedChangeListener { _, checked ->
+            if (!updatingUi) config.alertFullEnabled = checked
         }
         // 勾选的先后顺序就是悬浮窗里各行的排列顺序
         checkShowPower.setOnCheckedChangeListener { _, checked ->
@@ -196,6 +212,12 @@ class MainActivity : AppCompatActivity() {
 
         btnPalette.setOnClickListener { ColorPickerDialog.show(this) }
 
+        archiveHeader.text = getString(R.string.section_archive) + "　▸"
+        archiveHeader.setOnClickListener { openArchive() }
+        alertTempValue.setOnClickListener { pickTempThreshold() }
+        alertSlowValue.setOnClickListener { pickSlowThreshold() }
+        alertTrickleValue.setOnClickListener { pickTrickleThreshold() }
+
         appearanceHeader.setOnClickListener {
             val expanded = appearanceSection.visibility != View.VISIBLE
             appearanceSection.visibility = if (expanded) View.VISIBLE else View.GONE
@@ -234,6 +256,95 @@ class MainActivity : AppCompatActivity() {
         val expanded = posSection.visibility == View.VISIBLE
         posHeader.text = getString(R.string.section_position) + if (expanded) "　▾" else "　▸"
     }
+
+    /** 进场用横向推移（新页从右边推进来、本页被带着向左退一点），和档案页的侧滑返回配成一套。 */
+    @Suppress("DEPRECATION")
+    private fun openArchive() {
+        startActivity(Intent(this, ArchiveActivity::class.java))
+        overridePendingTransition(R.anim.slide_in_from_right, R.anim.slide_out_to_left)
+    }
+
+    private fun syncAlertLabels() {
+        alertTempValue.text = tempLabel(config.alertTempCelsius)
+        alertSlowValue.text = slowLabel(config.alertSlowWatts)
+        alertTrickleValue.text = slowLabel(config.alertTrickleWatts)
+    }
+
+    private fun pickTempThreshold() {
+        showOptionPicker(TEMP_OPTIONS, ::tempLabel) {
+            config.alertTempCelsius = it
+            syncAlertLabels()
+        }
+    }
+
+    /** 慢充的判定窗口固定为插电 5 分钟后、近一分钟均值，只调阈值。 */
+    private fun pickSlowThreshold() {
+        showOptionPicker(SLOW_OPTIONS, ::slowLabel) {
+            config.alertSlowWatts = it
+            syncAlertLabels()
+        }
+    }
+
+    /** 阈值选择弹窗：只留一列居中的选项，宽度给屏幕一半，不再带标题（行名已经说明是哪个提醒）。 */
+    /** 涓流提醒的电量门槛固定在 80%，只调功率阈值。 */
+    private fun pickTrickleThreshold() {
+        showOptionPicker(TRICKLE_OPTIONS, ::slowLabel) {
+            config.alertTrickleWatts = it
+            syncAlertLabels()
+        }
+    }
+
+    private fun showOptionPicker(options: List<Int>, label: (Int) -> String, onPick: (Int) -> Unit) {
+        val density = resources.displayMetrics.density
+        val verticalPadding = (14 * density).toInt()
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, verticalPadding, 0, verticalPadding)
+        }
+        val dialog = AlertDialog.Builder(this).setView(container).create()
+        val rowBackground = selectableItemBackground()
+        options.forEach { value ->
+            container.addView(
+                TextView(this).apply {
+                    text = label(value)
+                    textSize = 16f
+                    gravity = Gravity.CENTER
+                    minHeight = (44 * density).toInt()
+                    setPadding(0, verticalPadding, 0, verticalPadding)
+                    setBackgroundResource(rowBackground)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        onPick(value)
+                        dialog.dismiss()
+                    }
+                }
+            )
+        }
+        dialog.show()
+        // 底色要跟主界面一致，只能在 Activity 主题上解析这个属性：Dialog 主题会把它解析成纯白。
+        val surface = GradientDrawable().apply {
+            cornerRadius = 28f * resources.displayMetrics.density
+            setColor(pageSurfaceColor())
+        }
+        dialog.window?.setBackgroundDrawable(surface)
+        // 默认的半透明遮罩会把后面的主界面压暗，同色的弹窗就会显得"发白"，这里直接去掉遮罩。
+        dialog.window?.setDimAmount(0f)
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels / 2f).toInt(),
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+    }
+
+    private fun pageSurfaceColor(): Int {
+        val value = TypedValue()
+        if (!theme.resolveAttribute(android.R.attr.colorBackground, value, true)) return Color.WHITE
+        return if (value.resourceId != 0) ContextCompat.getColor(this, value.resourceId) else value.data
+    }
+
+    private fun tempLabel(value: Int): String = if (value <= 0) "关闭" else "$value ℃"
+
+    private fun slowLabel(value: Int): String = if (value <= 0) "关闭" else "< $value W"
 
     /** 方向按钮只写偏好里的目标位置，悬浮窗服务监听偏好后自行移动和夹边；按住按钮连续移动。 */
     private fun wirePositionButtons() {
@@ -290,11 +401,12 @@ class MainActivity : AppCompatActivity() {
         switchHalfVoltage.isChecked = config.halfVoltage
         switchResidentNotification.isChecked = config.residentNotification
         switchLocked.isChecked = config.locked
+        switchAlertFull.isChecked = config.alertFullEnabled
         checkShowPower.isChecked = config.showPower
         checkShowTemp.isChecked = config.showTemp
         checkShowVolt.isChecked = config.showVoltage
         checkShowAmp.isChecked = config.showCurrent
-        syncResidentHint()
+        syncAlertLabels()
 
         seekTextSize.progress = (config.textSizeSp - Prefs.MIN_TEXT_SP).roundToInt()
         textSizeValue.text = "${config.textSizeSp.roundToInt()} sp"
@@ -304,12 +416,6 @@ class MainActivity : AppCompatActivity() {
         syncCapacityLabel()
         seekRefresh.progress = config.refreshMillis / 100 - 3
         refreshValue.text = "${config.refreshMillis / 1000f} 秒"
-    }
-
-    /** 只有关掉常驻时才说明代价，平时不占地方。 */
-    private fun syncResidentHint() {
-        residentNotificationHint.visibility =
-            if (config.residentNotification) View.GONE else View.VISIBLE
     }
 
     /** 显示估算真正会用到的容量：自动读到就用设计容量。 */
@@ -364,5 +470,10 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val STEP_PX = 5
+
+        /** 0 表示关闭提醒；42 ℃ 是本机大功率快充时的正常上沿，默认停在这一档。 */
+        private val TEMP_OPTIONS = listOf(0, 36, 38, 40, 42, 46, 48, 50)
+        private val SLOW_OPTIONS = listOf(0, 2, 4, 6, 8, 10)
+        private val TRICKLE_OPTIONS = listOf(0, 2, 3, 5)
     }
 }
