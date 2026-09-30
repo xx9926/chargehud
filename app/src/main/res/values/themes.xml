@@ -30,4 +30,19 @@
         <item name="android:textSize">15sp</item>
         <item name="android:paddingTop">10dp</item>
     </style>
+
+    <!-- 四向位置按钮：描边把可点区域框出来，否则看着只是一排字符，不知道能点哪里。 -->
+    <style name="PosButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_margin">4dp</item>
+        <item name="android:background">@drawable/pos_button_frame</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textColor">@color/section_label</item>
+        <item name="android:textSize">15sp</item>
+    </style>
 </resources>

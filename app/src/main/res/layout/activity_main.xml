@@ -72,28 +72,6 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="文字颜色"
-                    android:textSize="15sp" />
-
-                <Button
-                    android:id="@+id/btnPalette"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="调色盘"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
             <TextView
                 style="@style/RowLabel"
                 android:layout_width="match_parent"
@@ -142,6 +120,13 @@
                 style="@style/RowLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="勾选的先后顺序就是悬浮窗从上到下的排列顺序"
+                android:textSize="13sp" />
+
+            <TextView
+                style="@style/RowLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:text="文字大小" />
 
             <LinearLayout
@@ -168,7 +153,7 @@
                 style="@style/RowLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="文字底板透明度" />
+                android:text="悬浮窗透明度" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -188,6 +173,28 @@
                     android:layout_height="wrap_content"
                     android:minWidth="56dp"
                     android:gravity="end" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="文字颜色"
+                    android:textSize="15sp" />
+
+                <Button
+                    android:id="@+id/btnPalette"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="调色盘"
+                    android:textSize="13sp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -212,36 +219,26 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <Button
+                <!-- 用 TextView 而不是 Button：Material 主题会把 Button 换成 MaterialButton
+                     并刷上 colorPrimary，灰色描边会被染成橙色。 -->
+                <TextView
                     android:id="@+id/btnUp"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    style="@style/PosButton"
                     android:text="▲" />
 
-                <Button
+                <TextView
                     android:id="@+id/btnDown"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    style="@style/PosButton"
                     android:text="▼" />
 
-                <Button
+                <TextView
                     android:id="@+id/btnLeft"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    style="@style/PosButton"
                     android:text="◀" />
 
-                <Button
+                <TextView
                     android:id="@+id/btnRight"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    style="@style/PosButton"
                     android:text="▶" />
             </LinearLayout>
 
