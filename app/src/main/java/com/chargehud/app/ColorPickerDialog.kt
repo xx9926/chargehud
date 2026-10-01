@@ -21,12 +21,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import kotlin.math.roundToInt
 
-/** 取色弹窗：左边饱和度/明度方块、右边色相竖条，拖动即时改悬浮窗文字颜色，取消则恢复原色。 */
+/** 取色弹窗：左边饱和度/明度方块、右边色相竖条，拖动即时回调颜色，取消则回到打开时的颜色。 */
 object ColorPickerDialog {
 
-    fun show(activity: AppCompatActivity) {
-        val config = HudConfig(activity)
-        val original = config.textColor
+    fun show(activity: AppCompatActivity, initial: Int, onColor: (Int) -> Unit) {
+        val original = initial
         val hsv = FloatArray(3)
         Color.colorToHSV(original, hsv)
 
@@ -49,7 +48,7 @@ object ColorPickerDialog {
 
         var editingHex = false
         fun apply(color: Int, writeHex: Boolean) {
-            config.textColor = color
+            onColor(color)
             Color.colorToHSV(color, hsv)
             svPanel.setHsv(hsv[0], hsv[1], hsv[2])
             hueBar.hue = hsv[0]
@@ -99,7 +98,7 @@ object ColorPickerDialog {
 
         val dialog = AlertDialog.Builder(activity)
             .setView(view)
-            .setOnCancelListener { config.textColor = original }
+            .setOnCancelListener { onColor(original) }
             .create()
         view.findViewById<View>(R.id.btnPresets).setOnClickListener {
             presetRow.visibility = if (presetRow.visibility == View.VISIBLE) View.GONE else View.VISIBLE

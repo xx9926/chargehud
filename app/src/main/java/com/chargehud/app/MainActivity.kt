@@ -5,12 +5,15 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.OpenableColumns
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -21,6 +24,8 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -53,6 +58,15 @@ open class MainActivity : AppCompatActivity() {
     private lateinit var appearanceSection: LinearLayout
     private lateinit var dataHeader: TextView
     private lateinit var dataSection: LinearLayout
+    private lateinit var themeHeader: TextView
+    private lateinit var themeSection: LinearLayout
+    private lateinit var bgPhotoValue: TextView
+    private lateinit var bgPhotoClear: TextView
+    private lateinit var bgColorValue: TextView
+    private lateinit var seekBgAlpha: SeekBar
+    private lateinit var bgAlphaValue: TextView
+    private lateinit var seekBgBlur: SeekBar
+    private lateinit var bgBlurValue: TextView
     private lateinit var alertHeader: TextView
     private lateinit var alertSection: LinearLayout
     private lateinit var advancedHeader: TextView
@@ -70,10 +84,50 @@ open class MainActivity : AppCompatActivity() {
     private lateinit var seekRefresh: SeekBar
     private lateinit var refreshValue: TextView
     private lateinit var liveReading: TextView
+    private lateinit var bgLayer: View
+    private lateinit var bgVideo: TextureView
+    private lateinit var pageScroll: View
     private lateinit var repoLink: TextView
+
+    private val backgroundVideo = BackgroundVideo()
 
     private var updatingUi = false
     private val handler = Handler(Looper.getMainLooper())
+
+    /** 相册选背景：图片和视频都当场复制一份进应用私有目录，之后背景只认这份副本，相册里删掉原素材也不影响。 */
+    private val pickBackground =
+        registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            if (uri == null) return@registerForActivityResult
+            val name = displayName(uri)
+            if (isVideoUri(uri)) importVideo(uri, name) else importImage(uri, name)
+        }
+
+    private fun isVideoUri(uri: Uri): Boolean =
+        contentResolver.getType(uri)?.startsWith("video/") == true
+
+    private fun importImage(uri: Uri, name: String) {
+        ThemeBackground.importImage(this, uri) { ok ->
+            if (!ok || isFinishing || isDestroyed) return@importImage
+            config.bgImageName = name
+            config.bgMediaKind = ThemeBackground.KIND_IMAGE
+            ThemeBackground.dropCache()
+            syncThemeUi()
+        }
+    }
+
+    private fun importVideo(uri: Uri, name: String) {
+        ThemeBackground.importVideo(this, uri) { ok ->
+            if (isFinishing || isDestroyed) return@importVideo
+            if (!ok) {
+                Toast.makeText(this, R.string.bg_video_too_large, Toast.LENGTH_LONG).show()
+                return@importVideo
+            }
+            config.bgImageName = name
+            config.bgMediaKind = ThemeBackground.KIND_VIDEO
+            ThemeBackground.dropCache()
+            syncThemeUi()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,8 +137,10 @@ open class MainActivity : AppCompatActivity() {
         RecentsEntry.applyEntry(this, config.hideFromRecents)
         ChargeRecorderService.ensure(this)
         bindViews()
+        applyEdgeToEdge(this, pageScroll)
         configureSeekBarRanges()
         wireControls()
+        applyThemeBackground()
     }
 
     override fun onResume() {
@@ -92,14 +148,21 @@ open class MainActivity : AppCompatActivity() {
         updatingUi = true
         syncFromConfig()
         updatingUi = false
+        applyThemeBackground()
         handler.post(livePoller)
     }
 
+    /** 窗口重拿焦点时系统会按主题重算状态栏图标，这里把主题要的那一套再压回去。 */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) applyThemeBackground()
+    }
+
     override fun onPause() {
-        // 点页面里的文字不会让输入框失焦，返回键也只收起键盘；离页时补一次落盘。
-        // 只在手动那一栏真的显示着时补，否则切回自动后输入框里的旧文本会被当成新值写回去。
+        // 点页面里的文字不会让输入框失焦，返回键也只收起键盘；离页时补一次落盘。        // 只在手动那一栏真的显示着时补，否则切回自动后输入框里的旧文本会被当成新值写回去。
         if (!config.autoCapacity && capacityManualRow.visibility == View.VISIBLE) commitCapacityInput()
         stopMoveRepeat()
+        backgroundVideo.stop()
         handler.removeCallbacks(livePoller)
         super.onPause()
     }
@@ -127,6 +190,16 @@ open class MainActivity : AppCompatActivity() {
         appearanceSection = findViewById(R.id.appearanceSection)
         dataHeader = findViewById(R.id.dataHeader)
         dataSection = findViewById(R.id.dataSection)
+        themeHeader = findViewById(R.id.themeHeader)
+        themeSection = findViewById(R.id.themeSection)
+        bgPhotoValue = findViewById(R.id.bgPhotoValue)
+        bgPhotoClear = findViewById(R.id.bgPhotoClear)
+        bgVideo = findViewById(R.id.bgVideo)
+        bgColorValue = findViewById(R.id.bgColorValue)
+        seekBgAlpha = findViewById(R.id.seekBgAlpha)
+        bgAlphaValue = findViewById(R.id.bgAlphaValue)
+        seekBgBlur = findViewById(R.id.seekBgBlur)
+        bgBlurValue = findViewById(R.id.bgBlurValue)
         alertHeader = findViewById(R.id.alertHeader)
         alertSection = findViewById(R.id.alertSection)
         advancedHeader = findViewById(R.id.advancedHeader)
@@ -145,12 +218,16 @@ open class MainActivity : AppCompatActivity() {
         refreshValue = findViewById(R.id.refreshValue)
         liveReading = findViewById(R.id.liveReading)
         repoLink = findViewById(R.id.repoLink)
+        bgLayer = findViewById(R.id.bgLayer)
+        pageScroll = findViewById(R.id.pageScroll)
     }
 
     private fun configureSeekBarRanges() {
         seekTextSize.max = (Prefs.MAX_TEXT_SP - Prefs.MIN_TEXT_SP).roundToInt()
         seekBackgroundAlpha.max = 100
         seekRefresh.max = 47
+        seekBgAlpha.max = 100
+        seekBgBlur.max = 100
     }
 
     private fun wireControls() {
@@ -258,7 +335,49 @@ open class MainActivity : AppCompatActivity() {
             }
         })
 
-        btnPalette.setOnClickListener { ColorPickerDialog.show(this) }
+        btnPalette.setOnClickListener {
+            ColorPickerDialog.show(this, config.textColor) { color -> config.textColor = color }
+        }
+
+        themeHeader.setOnClickListener {
+            val expanded = themeSection.visibility != View.VISIBLE
+            themeSection.visibility = if (expanded) View.VISIBLE else View.GONE
+            syncThemeHeader()
+        }
+        syncThemeHeader()
+        bgPhotoValue.setOnClickListener {
+            pickBackground.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+            )
+        }
+        bgPhotoClear.setOnClickListener {
+            ThemeBackground.imageFile(this).delete()
+            ThemeBackground.videoFile(this).delete()
+            config.bgImageName = ""
+            config.bgMediaKind = ""
+            ThemeBackground.dropCache()
+            syncThemeUi()
+        }
+        bgColorValue.setOnClickListener {
+            ColorPickerDialog.show(this, config.bgColor) { color ->
+                config.bgColor = color
+                syncThemeUi()
+            }
+        }
+        seekBgAlpha.setOnSeekBarChangeListener(object : SimpleSeekListener() {
+            override fun onValueChanged(bar: SeekBar, progress: Int) {
+                config.pageBgAlphaPercent = progress
+                bgAlphaValue.text = "$progress%"
+                applyThemeBackground()
+            }
+        })
+        seekBgBlur.setOnSeekBarChangeListener(object : SimpleSeekListener() {
+            override fun onValueChanged(bar: SeekBar, progress: Int) {
+                config.pageBgBlurPercent = progress
+                bgBlurValue.text = "$progress%"
+                applyThemeBackground()
+            }
+        })
 
         val repoUrl = getString(R.string.repo_url)
         repoLink.text = repoUrl
@@ -332,6 +451,48 @@ open class MainActivity : AppCompatActivity() {
     private fun syncAdvancedHeader() {
         val expanded = advancedSection.visibility == View.VISIBLE
         advancedHeader.text = getString(R.string.section_advanced) + if (expanded) "　▾" else "　▸"
+    }
+
+    private fun syncThemeHeader() {
+        val expanded = themeSection.visibility == View.VISIBLE
+        themeHeader.text = getString(R.string.section_theme) + if (expanded) "　▾" else "　▸"
+    }
+
+    /** 主题那一栏的显示值：素材名、颜色、两个百分比滑块。 */
+    private fun syncThemeUi() {
+        // 副本没了（清除过、或应用数据被清）就把类型和名字一起清掉，别显示一个用不上的文件名。
+        val kind = when {
+            config.bgMediaKind == ThemeBackground.KIND_VIDEO &&
+                ThemeBackground.videoFile(this).exists() -> ThemeBackground.KIND_VIDEO
+            config.bgMediaKind == ThemeBackground.KIND_IMAGE &&
+                ThemeBackground.imageFile(this).exists() -> ThemeBackground.KIND_IMAGE
+            else -> ""
+        }
+        if (kind != config.bgMediaKind) config.bgMediaKind = kind
+        bgPhotoValue.text = if (kind.isEmpty()) "未选择" else config.bgImageName.ifEmpty { "已选择" }
+        bgPhotoClear.visibility = if (kind.isEmpty()) View.GONE else View.VISIBLE
+        bgColorValue.text = String.format("#%06X", config.bgColor and 0xFFFFFF)
+        seekBgAlpha.progress = config.pageBgAlphaPercent
+        bgAlphaValue.text = "${config.pageBgAlphaPercent}%"
+        seekBgBlur.progress = config.pageBgBlurPercent
+        bgBlurValue.text = "${config.pageBgBlurPercent}%"
+        applyThemeBackground()
+    }
+
+    private fun applyThemeBackground() {
+        ThemeBackground.applyTo(this, bgLayer, config)
+        backgroundVideo.apply(this, bgVideo, config, active = true)
+    }
+
+    /** 只为了给用户看这一行写的是哪张图，取不到名字也不影响背景本身。 */
+    private fun displayName(uri: Uri): String {
+        val columns = arrayOf(OpenableColumns.DISPLAY_NAME)
+        runCatching {
+            contentResolver.query(uri, columns, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst() && !cursor.isNull(0)) return cursor.getString(0)
+            }
+        }
+        return uri.lastPathSegment?.substringAfterLast('/').orEmpty().ifEmpty { "已选择" }
     }
 
     private fun syncPosHeader() {
@@ -513,6 +674,7 @@ open class MainActivity : AppCompatActivity() {
         seekBackgroundAlpha.progress = config.backgroundAlphaPercent
         backgroundAlphaValue.text = "${config.backgroundAlphaPercent}%"
         syncCapacityUi()
+        syncThemeUi()
         seekRefresh.progress = config.refreshMillis / 100 - 3
         refreshValue.text = "${config.refreshMillis / 1000f} 秒"
     }

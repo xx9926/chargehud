@@ -1,10 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:fitsSystemWindows="true">
+    android:layout_height="match_parent">
+
+    <!-- 主题背景单独一层：模糊用 RenderEffect 只作用在它身上，文字不受影响。 -->
+    <View
+        android:id="@+id/bgLayer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 背景视频那一层，垫在 bgLayer 的纯色底上面；居中是为了代码把它撑成裁剪尺寸后仍然对齐屏幕。 -->
+    <TextureView
+        android:id="@+id/bgVideo"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <ScrollView
+        android:id="@+id/pageScroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -288,6 +306,151 @@
             android:visibility="gone">
 
             <TextView
+                android:id="@+id/themeHeader"
+                style="@style/SectionLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingTop="10dp"
+                android:text="@string/section_theme"
+                android:textSize="15sp" />
+
+            <LinearLayout
+                android:id="@+id/themeSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="27dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="背景图/视频"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/bgPhotoValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="end"
+                        android:maxWidth="200dp"
+                        android:ellipsize="start"
+                        android:singleLine="true"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/bgPhotoClear"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:minWidth="44dp"
+                        android:gravity="end"
+                        android:text="清除"
+                        android:textSize="15sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="27dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="背景颜色"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/bgColorValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:minWidth="76dp"
+                        android:gravity="end"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/RowLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="背景透明度" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <SeekBar
+                        android:id="@+id/seekBgAlpha"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/bgAlphaValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="56dp"
+                        android:gravity="end" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/RowLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="背景模糊" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <SeekBar
+                        android:id="@+id/seekBgBlur"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/bgBlurValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="56dp"
+                        android:gravity="end" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/RowHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="背景只影响设置页和档案页；照片或视频太花就把模糊调高、透明度调低，保证文字看得清。视频请选 60MB 以内的短视频。" />
+            </LinearLayout>
+
+            <TextView
                 android:id="@+id/alertHeader"
                 style="@style/SectionLabel"
                 android:layout_width="match_parent"
@@ -413,7 +576,7 @@
                     style="@style/RowHint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="提醒走独立通知渠道；只要开着任意一条，插电期间就会自动判定，不用开悬浮窗（此时通知栏会有一条静默通知）。" />
+                    android:text="提醒走独立通知渠道；只要开着任意一条，插电期间就会自动判定，不用开悬浮窗（这条判定要靠后台服务活着，所以通知栏会留一条静默通知）。" />
             </LinearLayout>
 
             <TextView
@@ -560,7 +723,7 @@
                     style="@style/RowHint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="打开后插电就开始记档案，不用开着悬浮窗；代价是充电期间通知栏会多一条静默通知。" />
+                    android:text="打开后插电就开始记档案，不用开着悬浮窗。通知栏那条静默通知是它和四条提醒共用的：只留提醒时也会一直在，撤掉它提醒就不触发了。" />
     
                 <!-- 电池容量：自动 / 手动放在一起，开关和结果显示必须在同一块里才看得懂关联。 -->
                 <TextView
@@ -678,4 +841,5 @@
 
         </LinearLayout>
     </LinearLayout>
-</ScrollView>
+    </ScrollView>
+</FrameLayout>

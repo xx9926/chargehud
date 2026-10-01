@@ -22,7 +22,7 @@
     <string name="record_notification_title">正在记录充电</string>
     <string name="record_notification_body">档案会在拔掉充电器时保存</string>
     <string name="watch_notification_title">充电提醒监控中</string>
-    <string name="watch_notification_body">拔掉充电器后自动退出</string>
+    <string name="watch_notification_body">关掉「高级 → 充电时后台记录」和四条提醒后自动消失</string>
 
     <string name="notification_title">%1$s · %2$s</string>
     <string name="action_hide">关闭悬浮窗</string>
@@ -48,6 +48,8 @@
     <string name="section_data">更多</string>
     <string name="section_position">位置</string>
     <string name="section_archive">档案</string>
+    <string name="section_theme">主题</string>
+    <string name="bg_video_too_large">这段视频超过 60MB，换一段短一点的</string>
     <string name="section_alerts">提醒</string>
     <string name="section_advanced">高级</string>
     <string name="live_reading_format">实时：功率 %1$s，温度 %2$s，电压 %3$s V，电流 %4$s A</string>

@@ -34,9 +34,17 @@ object Prefs {
     const val KEY_ALERT_TRICKLE_W = "alert_trickle_w"
     const val KEY_HIDE_RECENTS = "hide_recents"
     const val KEY_RECORD_CHARGING = "record_while_charging"
+    const val KEY_BG_IMAGE = "bg_image_name"
+    const val KEY_BG_KIND = "bg_media_kind"
+    const val KEY_BG_COLOR = "bg_color"
+    const val KEY_PAGE_BG_ALPHA = "page_bg_alpha"
+    const val KEY_PAGE_BG_BLUR = "page_bg_blur"
 
     const val MIN_TEXT_SP = 10f
     const val MAX_TEXT_SP = 40f
+
+    /** Material3 light surface，实测本机主界面底色就是这一档。 */
+    const val DEFAULT_BG_COLOR = 0xFFFEF7FF.toInt()
 
     fun of(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -186,6 +194,34 @@ class HudConfig(context: Context) {
     /** 充电期间的后台服务要不要留着：记档案和提醒，只要有一头要用就留。 */
     val wantsChargeWatcher: Boolean
         get() = recordWhileCharging || anyAlertEnabled
+
+    /**
+     * 背景照片在设置页显示用的文件名。图片本体是选图时复制进私有目录的一份副本
+     * （见 [[ThemeBackground.imageFile]]），所以相册里删掉原图也还有背景。
+     */
+    var bgImageName: String
+        get() = sp.getString(Prefs.KEY_BG_IMAGE, "").orEmpty()
+        set(value) = sp.edit().putString(Prefs.KEY_BG_IMAGE, value).apply()
+
+    /** 背景用的是哪一类素材：照片 / 短视频 / 空（纯色）。副本文件在 ThemeBackground 里。 */
+    var bgMediaKind: String
+        get() = sp.getString(Prefs.KEY_BG_KIND, "").orEmpty()
+        set(value) = sp.edit().putString(Prefs.KEY_BG_KIND, value).apply()
+
+    /** 没有照片时的纯色背景；默认和主题底色一致，等于没换。 */
+    var bgColor: Int
+        get() = sp.getInt(Prefs.KEY_BG_COLOR, Prefs.DEFAULT_BG_COLOR)
+        set(value) = sp.edit().putInt(Prefs.KEY_BG_COLOR, value).apply()
+
+    /** 背景不透明度：0 = 完全透明（回到主题底色），100 = 原样。照片和纯色都吃这一档。 */
+    var pageBgAlphaPercent: Int
+        get() = sp.getInt(Prefs.KEY_PAGE_BG_ALPHA, 100)
+        set(value) = sp.edit().putInt(Prefs.KEY_PAGE_BG_ALPHA, value.coerceIn(0, 100)).apply()
+
+    /** 高斯模糊强度 0~100，只作用在照片上，用来把花哨的背景压平好让文字读得清。 */
+    var pageBgBlurPercent: Int
+        get() = sp.getInt(Prefs.KEY_PAGE_BG_BLUR, 0)
+        set(value) = sp.edit().putInt(Prefs.KEY_PAGE_BG_BLUR, value.coerceIn(0, 100)).apply()
 
     fun fieldShown(id: String): Boolean = when (id) {
         FIELD_POWER -> showPower

@@ -26,6 +26,8 @@ class ArchiveActivity : AppCompatActivity() {
     private lateinit var listContainer: LinearLayout
     private lateinit var clearButton: TextView
 
+    private val backgroundVideo = BackgroundVideo()
+
     private var sessions: List<ChargeSession> = emptyList()
     private var selectedIndex = 0
 
@@ -59,16 +61,22 @@ class ArchiveActivity : AppCompatActivity() {
         listContainer = findViewById(R.id.sessionList)
         clearButton = findViewById(R.id.btnClearArchive)
         clearButton.setOnClickListener { confirmClear() }
+        applyEdgeToEdge(this, findViewById(R.id.pageScroll))
     }
 
     override fun onResume() {
         super.onResume()
+        // 主题背景和设置页共用一套；画在背景层上，跟手右滑时整页（含背景）一起走。
+        val config = HudConfig(this)
+        ThemeBackground.applyTo(this, findViewById(R.id.bgLayer), config)
+        backgroundVideo.apply(this, findViewById(R.id.bgVideo), config, active = true)
         reload()
         handler.postDelayed(refresher, REFRESH_MS)
     }
 
     override fun onPause() {
         handler.removeCallbacks(refresher)
+        backgroundVideo.stop()
         super.onPause()
     }
 
