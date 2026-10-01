@@ -44,12 +44,12 @@
     <string name="power_source_estimated">电量变化率估算</string>
     <string name="power_source_none">无电流数据</string>
 
-    <string name="service_running">运行中</string>
-    <string name="service_stopped">未运行</string>
     <string name="section_appearance">外观</string>
     <string name="section_data">更多</string>
     <string name="section_position">位置</string>
     <string name="section_archive">档案</string>
+    <string name="section_alerts">提醒</string>
+    <string name="section_advanced">高级</string>
     <string name="live_reading_format">实时：功率 %1$s，温度 %2$s，电压 %3$s V，电流 %4$s A</string>
     <string name="lock_hint">锁定后悬浮窗位置固定、拖不动，单击仍可打开本页。</string>
     <string name="tip_miui">请在“应用管理 → 充电悬浮窗”中允许自启动，并把省电策略设为“无限制”，否则后台可能被清理。</string>

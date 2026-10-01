@@ -31,7 +31,6 @@ open class MainActivity : AppCompatActivity() {
 
     private lateinit var config: HudConfig
 
-    private lateinit var statusText: TextView
     private lateinit var switchEnabled: SwitchCompat
     private lateinit var switchSysFs: SwitchCompat
     private lateinit var switchAutoCapacity: SwitchCompat
@@ -54,6 +53,10 @@ open class MainActivity : AppCompatActivity() {
     private lateinit var appearanceSection: LinearLayout
     private lateinit var dataHeader: TextView
     private lateinit var dataSection: LinearLayout
+    private lateinit var alertHeader: TextView
+    private lateinit var alertSection: LinearLayout
+    private lateinit var advancedHeader: TextView
+    private lateinit var advancedSection: LinearLayout
     private lateinit var posHeader: TextView
     private lateinit var posSection: LinearLayout
     private lateinit var seekTextSize: SeekBar
@@ -89,7 +92,6 @@ open class MainActivity : AppCompatActivity() {
         updatingUi = true
         syncFromConfig()
         updatingUi = false
-        refreshStatus()
         handler.post(livePoller)
     }
 
@@ -103,7 +105,6 @@ open class MainActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
-        statusText = findViewById(R.id.statusText)
         switchEnabled = findViewById(R.id.switchEnabled)
         switchSysFs = findViewById(R.id.switchSysFs)
         switchAutoCapacity = findViewById(R.id.switchAutoCapacity)
@@ -126,6 +127,10 @@ open class MainActivity : AppCompatActivity() {
         appearanceSection = findViewById(R.id.appearanceSection)
         dataHeader = findViewById(R.id.dataHeader)
         dataSection = findViewById(R.id.dataSection)
+        alertHeader = findViewById(R.id.alertHeader)
+        alertSection = findViewById(R.id.alertSection)
+        advancedHeader = findViewById(R.id.advancedHeader)
+        advancedSection = findViewById(R.id.advancedSection)
         posHeader = findViewById(R.id.posHeader)
         posSection = findViewById(R.id.posSection)
         seekTextSize = findViewById(R.id.seekTextSize)
@@ -152,8 +157,6 @@ open class MainActivity : AppCompatActivity() {
         switchEnabled.setOnCheckedChangeListener { _, checked ->
             if (updatingUi) return@setOnCheckedChangeListener
             if (checked) turnOn() else HudService.shutdown(this)
-            // 服务启动是异步的，这里不能立刻用 isAlive() 回写开关，否则刚拨上的开关会被弹回去。
-            handler.post { refreshStatus() }
         }
         switchSysFs.setOnCheckedChangeListener { _, checked ->
             if (!updatingUi) {
@@ -281,6 +284,20 @@ open class MainActivity : AppCompatActivity() {
         }
         syncDataHeader()
 
+        alertHeader.setOnClickListener {
+            val expanded = alertSection.visibility != View.VISIBLE
+            alertSection.visibility = if (expanded) View.VISIBLE else View.GONE
+            syncAlertHeader()
+        }
+        syncAlertHeader()
+
+        advancedHeader.setOnClickListener {
+            val expanded = advancedSection.visibility != View.VISIBLE
+            advancedSection.visibility = if (expanded) View.VISIBLE else View.GONE
+            syncAdvancedHeader()
+        }
+        syncAdvancedHeader()
+
         posHeader.setOnClickListener {
             val expanded = posSection.visibility != View.VISIBLE
             posSection.visibility = if (expanded) View.VISIBLE else View.GONE
@@ -305,6 +322,16 @@ open class MainActivity : AppCompatActivity() {
     private fun syncDataHeader() {
         val expanded = dataSection.visibility == View.VISIBLE
         dataHeader.text = getString(R.string.section_data) + if (expanded) "　▾" else "　▸"
+    }
+
+    private fun syncAlertHeader() {
+        val expanded = alertSection.visibility == View.VISIBLE
+        alertHeader.text = getString(R.string.section_alerts) + if (expanded) "　▾" else "　▸"
+    }
+
+    private fun syncAdvancedHeader() {
+        val expanded = advancedSection.visibility == View.VISIBLE
+        advancedHeader.text = getString(R.string.section_advanced) + if (expanded) "　▾" else "　▸"
     }
 
     private fun syncPosHeader() {
@@ -520,13 +547,6 @@ open class MainActivity : AppCompatActivity() {
         BatteryReader.reset()
     }
 
-    private fun refreshStatus() {
-        statusText.text = buildString {
-            append("服务状态：")
-            append(if (HudService.isAlive()) getString(R.string.service_running) else getString(R.string.service_stopped))
-        }
-    }
-
     private fun turnOn() {
         config.enabled = true
         HudService.start(this)
@@ -549,7 +569,6 @@ open class MainActivity : AppCompatActivity() {
                 )
             }
             handler.postDelayed(this, 1_000)
-            refreshStatus()
         }
     }
 
