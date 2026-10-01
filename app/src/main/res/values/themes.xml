@@ -36,6 +36,12 @@
         <item name="android:paddingTop">10dp</item>
     </style>
 
+    <!-- 紧跟在功能行下方的说明：留白要小，否则看不出是同一件事的说明。 -->
+    <style name="RowHint" parent="RowLabel">
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
     <!-- 四向位置按钮：描边把可点区域框出来，否则看着只是一排字符，不知道能点哪里。 -->
     <style name="PosButton">
         <item name="android:layout_width">0dp</item>

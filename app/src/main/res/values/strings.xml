@@ -17,6 +17,13 @@
     <string name="alert_trickle_body">电量 %1$d%%，功率只剩 %2$s W，快充已经结束，现在是慢速补满最后一点容量。</string>
     <string name="alert_slow_body">插电已满 %3$d 分钟，近一分钟平均只有 %1$s W，低于设定的 %2$d W。可能是充电器功率不够、线材或接口接触不良，也可能是手机端在限流。</string>
 
+    <string name="record_channel_name">充电记录</string>
+    <string name="record_channel_description">充电期间在后台记录充电档案</string>
+    <string name="record_notification_title">正在记录充电</string>
+    <string name="record_notification_body">档案会在拔掉充电器时保存</string>
+    <string name="watch_notification_title">充电提醒监控中</string>
+    <string name="watch_notification_body">拔掉充电器后自动退出</string>
+
     <string name="notification_title">%1$s · %2$s</string>
     <string name="action_hide">关闭悬浮窗</string>
     <string name="action_lock">锁定</string>
@@ -46,4 +53,7 @@
     <string name="live_reading_format">实时：功率 %1$s，温度 %2$s，电压 %3$s V，电流 %4$s A</string>
     <string name="lock_hint">锁定后悬浮窗位置固定、拖不动，单击仍可打开本页。</string>
     <string name="tip_miui">请在“应用管理 → 充电悬浮窗”中允许自启动，并把省电策略设为“无限制”，否则后台可能被清理。</string>
+
+    <string name="repo_url">https://github.com/xx9926/chargehud</string>
+    <string name="repo_copied">项目地址已复制</string>
 </resources>

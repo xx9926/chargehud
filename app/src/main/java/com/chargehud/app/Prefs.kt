@@ -32,6 +32,8 @@ object Prefs {
     const val KEY_ALERT_SLOW_W = "alert_slow_w"
     const val KEY_ALERT_FULL = "alert_full"
     const val KEY_ALERT_TRICKLE_W = "alert_trickle_w"
+    const val KEY_HIDE_RECENTS = "hide_recents"
+    const val KEY_RECORD_CHARGING = "record_while_charging"
 
     const val MIN_TEXT_SP = 10f
     const val MAX_TEXT_SP = 40f
@@ -85,9 +87,10 @@ class HudConfig(context: Context) {
         get() = sp.getBoolean(Prefs.KEY_SYSFS, true)
         set(value) = sp.edit().putBoolean(Prefs.KEY_SYSFS, value).apply()
 
+    /** 上限放到 20000 mAh：现在动辄一万多毫安的电池很常见。 */
     var capacityMah: Int
         get() = sp.getInt(Prefs.KEY_CAPACITY, 5000)
-        set(value) = sp.edit().putInt(Prefs.KEY_CAPACITY, value.coerceIn(1000, 10000)).apply()
+        set(value) = sp.edit().putInt(Prefs.KEY_CAPACITY, value.coerceIn(1000, 20000)).apply()
 
     /** 关掉后用 capacityMah 手填值，反射读设计容量失败的机型会自动落回手填值。 */
     var autoCapacity: Boolean
@@ -159,6 +162,30 @@ class HudConfig(context: Context) {
     var alertTrickleWatts: Int
         get() = sp.getInt(Prefs.KEY_ALERT_TRICKLE_W, DEFAULT_ALERT_TRICKLE_W)
         set(value) = sp.edit().putInt(Prefs.KEY_ALERT_TRICKLE_W, value.coerceIn(0, 20)).apply()
+
+    /**
+     * 隐藏后台：打开后设置页不进最近任务，清后台时没有可滑掉的目标。
+     * 真正生效靠切换桌面入口别名，见 [[RecentsEntry]]。
+     */
+    var hideFromRecents: Boolean
+        get() = sp.getBoolean(Prefs.KEY_HIDE_RECENTS, false)
+        set(value) = sp.edit().putBoolean(Prefs.KEY_HIDE_RECENTS, value).apply()
+
+    /**
+     * 充电时后台记录：插电就起一个只在充电期间存在的前台服务来记档案，
+     * 不显示悬浮窗也照记。代价是充电时通知栏会多一条静默通知。
+     */
+    var recordWhileCharging: Boolean
+        get() = sp.getBoolean(Prefs.KEY_RECORD_CHARGING, true)
+        set(value) = sp.edit().putBoolean(Prefs.KEY_RECORD_CHARGING, value).apply()
+
+    /** 四条提醒只要开着一条，充电期间就得有个循环在判定，见 [[ChargeRecorderService]]。 */
+    val anyAlertEnabled: Boolean
+        get() = alertTempCelsius > 0 || alertSlowWatts > 0 || alertFullEnabled || alertTrickleWatts > 0
+
+    /** 充电期间的后台服务要不要留着：记档案和提醒，只要有一头要用就留。 */
+    val wantsChargeWatcher: Boolean
+        get() = recordWhileCharging || anyAlertEnabled
 
     fun fieldShown(id: String): Boolean = when (id) {
         FIELD_POWER -> showPower

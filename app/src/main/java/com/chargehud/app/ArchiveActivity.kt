@@ -135,10 +135,10 @@ class ArchiveActivity : AppCompatActivity() {
     }
 
     private fun reload() {
-        val live = if (HudService.isAlive()) ChargeLog.live() else null
-        sessions = listOfNotNull(live) + ChargeLog.sessions(this)
+        // 进行中的那条由充电记录服务持有，没有会话时 live() 自己返回 null。
+        sessions = listOfNotNull(ChargeLog.live()) + ChargeLog.sessions(this)
         statusText.text = when {
-            sessions.isEmpty() -> "还没有记录：打开悬浮窗并插上充电器后才会开始记，服务停跑的时段不会补。"
+            sessions.isEmpty() -> "还没有记录：插上充电器就会开始记，不用开悬浮窗（可在「更多 → 充电时后台记录」关掉）。"
             else -> "共 ${sessions.size} 条，只保存在本机，卸载即清空。"
         }
         selectedIndex = selectedIndex.coerceIn(0, (sessions.size - 1).coerceAtLeast(0))

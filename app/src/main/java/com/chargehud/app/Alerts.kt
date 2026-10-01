@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.os.BatteryManager
 import android.os.Build
 import android.os.SystemClock
@@ -12,8 +11,8 @@ import androidx.core.app.NotificationCompat
 import java.util.Locale
 
 /**
- * 阈值提醒：电池温度过高、插电很久仍然充得慢，各发一条独立渠道的通知。
- * 判定都在悬浮窗服务的刷新循环里跑，服务没开时不提醒。
+ * 阈值提醒：电池温度过高、插电很久仍然充得慢、充满、进入涓流，各发一条独立渠道的通知。
+ * 判定都在充电期间的后台服务里跑（见 [[ChargeRecorderService]]），因此和悬浮窗开没开无关。
  */
 object Alerts {
 
@@ -166,7 +165,7 @@ object Alerts {
         val contentIntent = PendingIntent.getActivity(
             context,
             id,
-            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            RecentsEntry.settingsIntent(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)

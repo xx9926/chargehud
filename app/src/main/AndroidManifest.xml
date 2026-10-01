@@ -19,9 +19,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ChargeHud">
 
+        <!--
+            「隐藏后台」的实现要点：任务进不进最近任务只能在创建那一刻决定，而 activity-alias 上的
+            excludeFromRecents 会被 AMS 忽略（它读的是目标 Activity 的属性），所以这里用两个真 Activity
+            子类共用 SettingsActivity 的逻辑，各自带一个 excludeFromRecents，靠组件启停切换桌面入口。
+        -->
         <activity
-            android:name=".MainActivity"
+            android:name=".SettingsShown"
+            android:enabled="true"
+            android:excludeFromRecents="false"
             android:exported="true"
+            android:label="@string/app_name"
             android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,11 +38,37 @@
         </activity>
 
         <activity
+            android:name=".SettingsHidden"
+            android:enabled="false"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:launchMode="singleTask" />
+
+        <activity
             android:name=".ArchiveActivity"
             android:exported="false"
             android:label="档案"
-            android:theme="@style/Theme.ChargeHud.Archive"
-            android:parentActivityName=".MainActivity" />
+            android:theme="@style/Theme.ChargeHud.Archive" />
+
+        <service
+            android:name=".ChargeRecorderService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="charging_session_logging" />
+        </service>
 
         <service
             android:name=".HudService"
@@ -62,6 +96,13 @@
             android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".ChargingReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
             </intent-filter>
         </receiver>
     </application>

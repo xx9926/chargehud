@@ -323,25 +323,6 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="自动读取电池设计容量"
-                    android:textSize="15sp" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/switchAutoCapacity"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:text="双电芯修正（功率 ×2）"
                     android:textSize="15sp" />
 
@@ -400,6 +381,58 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:text="隐藏后台"
+                    android:textSize="15sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchHideRecents"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/RowHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="打开后设置页不进最近任务，清后台时没有可滑掉的目标，只剩悬浮窗服务；切换从下次进入设置页开始生效。" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="27dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="充电时后台记录"
+                    android:textSize="15sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchRecordCharging"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/RowHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="打开后插电就开始记档案，不用开着悬浮窗；代价是充电期间通知栏会多一条静默通知。" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="27dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="高温提醒"
                     android:textSize="15sp" />
 
@@ -442,11 +475,10 @@
             </LinearLayout>
 
             <TextView
-                style="@style/RowLabel"
+                style="@style/RowHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="电量 80% 以后功率本来就会降下来，那种情况不算充不进电，慢充提醒不会响。"
-                android:textSize="13sp" />
+                android:text="电量 80% 以后功率本来就会降下来，那种情况不算充不进电，慢充提醒不会响。" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -495,36 +527,72 @@
             </LinearLayout>
 
             <TextView
-                style="@style/RowLabel"
+                style="@style/RowHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="提醒走独立通知渠道，跟常驻通知无关；只有悬浮窗服务在跑的时候才会判定。"
-                android:textSize="13sp" />
+                android:text="提醒走独立通知渠道；只要开着任意一条，插电期间就会自动判定，不用开悬浮窗（此时通知栏会有一条静默通知）。" />
 
+            <!-- 电池容量：自动 / 手动放在一起，开关和结果显示必须在同一块里才看得懂关联。 -->
             <TextView
                 style="@style/RowLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="手填容量（估算与兜底用）" />
+                android:text="电池容量" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
+                android:minHeight="27dp"
                 android:orientation="horizontal">
 
-                <SeekBar
-                    android:id="@+id/seekCapacity"
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1" />
+                    android:layout_weight="1"
+                    android:text="自动识别设计容量"
+                    android:textSize="15sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchAutoCapacity"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/capacityAutoLabel"
+                style="@style/RowLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:id="@+id/capacityManualRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="27dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
 
                 <TextView
-                    android:id="@+id/capacityValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="手填容量（mAh）"
+                    android:textSize="15sp" />
+
+                <EditText
+                    android:id="@+id/capacityInput"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:minWidth="76dp"
-                    android:gravity="end" />
+                    android:ems="4"
+                    android:gravity="end"
+                    android:hint="1000 ~ 20000"
+                    android:importantForAutofill="no"
+                    android:inputType="number"
+                    android:maxLength="5"
+                    android:textSize="15sp" />
             </LinearLayout>
 
             <TextView
@@ -565,6 +633,16 @@
                 android:layout_height="wrap_content"
                 android:paddingTop="10dp"
                 android:text="安卓未向第三方开放瓦特数接口，取数分四级：①系统电流属性 CURRENT_NOW ②sysfs 电流节点（多数小米机型禁读）③库仑计 charge counter 差分 ④电池容量×电量变化率。只有前两档不带 ≈ 标记。息屏状态下系统可能暂停刷新，亮屏后自动恢复。"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/repoLink"
+                style="@style/RowLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
                 android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>

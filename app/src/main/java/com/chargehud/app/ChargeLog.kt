@@ -75,10 +75,14 @@ object ChargeLog {
 
     private const val TAG = "ChargeHud"
     private const val FILE_NAME = "charge_sessions.jsonl"
+    private const val CURRENT_FILE_NAME = "charge_session_current.json"
     private const val MAX_SESSIONS = 60
     private const val MIN_SESSION_MS = 30_000L
     private const val BASE_INTERVAL_MS = 5_000L
     private const val MAX_SAMPLES = 500
+
+    /** 每 30 秒把进行中的会话落一次盘：进程被杀也只剩最多 30 秒的损失。 */
+    private const val CHECKPOINT_MS = 30_000L
 
     private var appContext: Context? = null
     private var sessionActive = false
@@ -88,6 +92,7 @@ object ChargeLog {
     private var startLevel = 0
     private var capacityMah = 0
     private var lastSampleAt = 0L
+    private var lastCheckpointAt = 0L
     private var sampleIntervalMs = BASE_INTERVAL_MS
     private var peakWatts = 0.0
     private var peakTemp = Double.NaN
@@ -95,9 +100,10 @@ object ChargeLog {
     private var wattCount = 0
     private var gainedMahAccum = 0.0
 
-    /** 由悬浮窗服务的刷新循环调用；服务没跑的时段自然没有记录。 */
+    /** 由悬浮窗服务或充电记录服务的刷新循环调用。 */
     fun onReading(context: Context, reading: HudReading) {
         appContext = context.applicationContext
+        if (!sessionActive) recoverInterrupted(context, reading.charging)
         if (!reading.charging) {
             closeIfOpen()
             return
@@ -132,6 +138,7 @@ object ChargeLog {
             gainedMahAccum += reading.amps * sampleIntervalMs / 3_600_000.0 * 1000.0
         }
         if (samples.size > MAX_SAMPLES) decimate()
+        if (now - lastCheckpointAt >= CHECKPOINT_MS) checkpoint()
     }
 
     /** 进行中的会话快照，档案页拿来显示"进行中"那一条。 */
@@ -153,7 +160,10 @@ object ChargeLog {
     fun clear(context: Context) {
         // 进行中的会话也要丢掉，否则拔线时又把它写回文件。
         resetSession()
-        runCatching { file(context).delete() }.onFailure { Log.w(TAG, "档案清空失败", it) }
+        runCatching {
+            file(context).delete()
+            currentFile(context).delete()
+        }.onFailure { Log.w(TAG, "档案清空失败", it) }
     }
 
     private fun startSession(reading: HudReading, now: Long) {
@@ -164,6 +174,7 @@ object ChargeLog {
         capacityMah = reading.capacityMah
         samples.clear()
         lastSampleAt = now
+        lastCheckpointAt = now
         sampleIntervalMs = BASE_INTERVAL_MS
         peakWatts = 0.0
         peakTemp = if (reading.tempCelsius.isNaN()) Double.NaN else reading.tempCelsius
@@ -180,7 +191,57 @@ object ChargeLog {
         val worthKeeping = duration >= MIN_SESSION_MS && samples.size >= 3
         val session = snapshot().copy(live = false, endLevel = endLevel)
         resetSession()
+        appContext?.let { runCatching { currentFile(it).delete() } }
         if (worthKeeping) persist(session)
+    }
+
+    /**
+     * 上次这条会话可能是被杀掉的（断点文件还在）：还在充电就把样本读回来接着记，
+     * 已经拔掉就直接归档，别让半条记录烂在文件里。
+     */
+    private fun recoverInterrupted(context: Context, charging: Boolean) {
+        val file = currentFile(context)
+        if (!file.exists()) return
+        val stored = runCatching { decode(JSONObject(file.readText())) }.getOrNull()
+        if (stored == null || stored.samples.isEmpty()) {
+            file.delete()
+            return
+        }
+        if (!charging) {
+            file.delete()
+            if (stored.samples.size >= 3) persist(stored)
+            return
+        }
+        resume(stored)
+    }
+
+    private fun resume(stored: ChargeSession) {
+        val now = SystemClock.elapsedRealtime()
+        sessionActive = true
+        startElapsed = now - stored.durationMillis
+        startWall = stored.startWallMillis
+        startLevel = stored.startLevel
+        capacityMah = stored.capacityMah
+        samples.clear()
+        samples.addAll(stored.samples)
+        lastSampleAt = now
+        lastCheckpointAt = now
+        sampleIntervalMs = BASE_INTERVAL_MS
+        peakWatts = stored.peakWatts
+        peakTemp = stored.peakTempCelsius
+        wattCount = stored.samples.count { it.watts > 0 }
+        wattSum = stored.samples.filter { it.watts > 0 }.sumOf { it.watts }
+        gainedMahAccum = stored.gainedMah.toDouble()
+        Log.i(TAG, "充电档案续写断点：保留 ${stored.samples.size} 个采样点")
+    }
+
+    private fun checkpoint() {
+        val context = appContext ?: return
+        val line = encode(snapshot())
+        Thread {
+            runCatching { currentFile(context).writeText(line) }
+                .onFailure { Log.w(TAG, "充电断点写入失败", it) }
+        }.start()
     }
 
     private fun resetSession() {
@@ -301,4 +362,7 @@ object ChargeLog {
 
     private fun file(context: Context): File =
         File(context.applicationContext.filesDir, FILE_NAME)
+
+    private fun currentFile(context: Context): File =
+        File(context.applicationContext.filesDir, CURRENT_FILE_NAME)
 }

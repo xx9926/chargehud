@@ -1,5 +1,7 @@
 package com.chargehud.app
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -11,18 +13,21 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.appcompat.widget.SwitchCompat
 import kotlin.math.roundToInt
 
-class MainActivity : AppCompatActivity() {
+open class MainActivity : AppCompatActivity() {
 
     private lateinit var config: HudConfig
 
@@ -43,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var alertSlowValue: TextView
     private lateinit var alertTrickleValue: TextView
     private lateinit var switchAlertFull: SwitchCompat
+    private lateinit var switchHideRecents: SwitchCompat
     private lateinit var btnPalette: Button
     private lateinit var appearanceHeader: TextView
     private lateinit var appearanceSection: LinearLayout
@@ -54,11 +60,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textSizeValue: TextView
     private lateinit var seekBackgroundAlpha: SeekBar
     private lateinit var backgroundAlphaValue: TextView
-    private lateinit var seekCapacity: SeekBar
-    private lateinit var capacityValue: TextView
+    private lateinit var capacityAutoLabel: TextView
+    private lateinit var capacityManualRow: View
+    private lateinit var capacityInput: EditText
+    private lateinit var switchRecordCharging: SwitchCompat
     private lateinit var seekRefresh: SeekBar
     private lateinit var refreshValue: TextView
     private lateinit var liveReading: TextView
+    private lateinit var repoLink: TextView
 
     private var updatingUi = false
     private val handler = Handler(Looper.getMainLooper())
@@ -67,6 +76,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         config = HudConfig(this)
+        // 重装后组件启用状态会退回 manifest 默认值，这里跟偏好对齐一次。
+        RecentsEntry.applyEntry(this, config.hideFromRecents)
+        ChargeRecorderService.ensure(this)
         bindViews()
         configureSeekBarRanges()
         wireControls()
@@ -82,6 +94,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        // 点页面里的文字不会让输入框失焦，返回键也只收起键盘；离页时补一次落盘。
+        // 只在手动那一栏真的显示着时补，否则切回自动后输入框里的旧文本会被当成新值写回去。
+        if (!config.autoCapacity && capacityManualRow.visibility == View.VISIBLE) commitCapacityInput()
         stopMoveRepeat()
         handler.removeCallbacks(livePoller)
         super.onPause()
@@ -105,6 +120,7 @@ class MainActivity : AppCompatActivity() {
         alertSlowValue = findViewById(R.id.alertSlowValue)
         alertTrickleValue = findViewById(R.id.alertTrickleValue)
         switchAlertFull = findViewById(R.id.switchAlertFull)
+        switchHideRecents = findViewById(R.id.switchHideRecents)
         btnPalette = findViewById(R.id.btnPalette)
         appearanceHeader = findViewById(R.id.appearanceHeader)
         appearanceSection = findViewById(R.id.appearanceSection)
@@ -116,17 +132,19 @@ class MainActivity : AppCompatActivity() {
         textSizeValue = findViewById(R.id.textSizeValue)
         seekBackgroundAlpha = findViewById(R.id.seekBackgroundAlpha)
         backgroundAlphaValue = findViewById(R.id.backgroundAlphaValue)
-        seekCapacity = findViewById(R.id.seekCapacity)
-        capacityValue = findViewById(R.id.capacityValue)
+        capacityAutoLabel = findViewById(R.id.capacityAutoLabel)
+        capacityManualRow = findViewById(R.id.capacityManualRow)
+        capacityInput = findViewById(R.id.capacityInput)
+        switchRecordCharging = findViewById(R.id.switchRecordCharging)
         seekRefresh = findViewById(R.id.seekRefresh)
         refreshValue = findViewById(R.id.refreshValue)
         liveReading = findViewById(R.id.liveReading)
+        repoLink = findViewById(R.id.repoLink)
     }
 
     private fun configureSeekBarRanges() {
         seekTextSize.max = (Prefs.MAX_TEXT_SP - Prefs.MIN_TEXT_SP).roundToInt()
         seekBackgroundAlpha.max = 100
-        seekCapacity.max = 90
         seekRefresh.max = 47
     }
 
@@ -147,7 +165,7 @@ class MainActivity : AppCompatActivity() {
             if (!updatingUi) {
                 config.autoCapacity = checked
                 BatteryReader.reset()
-                syncCapacityLabel()
+                syncCapacityUi()
             }
         }
         switchDualCell.setOnCheckedChangeListener { _, checked ->
@@ -169,7 +187,18 @@ class MainActivity : AppCompatActivity() {
             if (!updatingUi) config.locked = checked
         }
         switchAlertFull.setOnCheckedChangeListener { _, checked ->
-            if (!updatingUi) config.alertFullEnabled = checked
+            if (!updatingUi) {
+                config.alertFullEnabled = checked
+                onAlertConfigChanged()
+            }
+        }
+        // 用 click 而不是 checkedChange：Activity 重建时系统会恢复开关状态，
+        // 那一下会走成监听器，把用户刚打开的隐藏状态又写回 false。
+        switchHideRecents.setOnClickListener {
+            val hidden = switchHideRecents.isChecked
+            config.hideFromRecents = hidden
+            // 当前任务是用旧入口建的，标记改不了；换入口从下次进设置页开始生效。
+            RecentsEntry.applyEntry(this, hidden)
         }
         // 勾选的先后顺序就是悬浮窗里各行的排列顺序
         checkShowPower.setOnCheckedChangeListener { _, checked ->
@@ -197,12 +226,28 @@ class MainActivity : AppCompatActivity() {
                 backgroundAlphaValue.text = "${config.backgroundAlphaPercent}%"
             }
         })
-        seekCapacity.setOnSeekBarChangeListener(object : SimpleSeekListener() {
-            override fun onValueChanged(bar: SeekBar, progress: Int) {
-                config.capacityMah = 1000 + progress * 100
-                syncCapacityLabel()
+        // 手填容量只在失焦或按完成时落盘：边打字边写会把中间值当成容量，也会把输入框里的数字改掉。
+        capacityInput.setOnFocusChangeListener { _, focused ->
+            if (!focused) commitCapacityInput()
+        }
+        capacityInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                commitCapacityInput()
+                true
+            } else {
+                false
             }
-        })
+        }
+        switchRecordCharging.setOnCheckedChangeListener { _, checked ->
+            if (updatingUi) return@setOnCheckedChangeListener
+            config.recordWhileCharging = checked
+            // 记录关掉时提醒可能还要用这个服务，所以按"还需不需要后台服务"来决定去留。
+            if (config.wantsChargeWatcher) {
+                ChargeRecorderService.ensure(this)
+            } else {
+                ChargeRecorderService.stop(this)
+            }
+        }
         seekRefresh.setOnSeekBarChangeListener(object : SimpleSeekListener() {
             override fun onValueChanged(bar: SeekBar, progress: Int) {
                 config.refreshMillis = 300 + progress * 100
@@ -211,6 +256,10 @@ class MainActivity : AppCompatActivity() {
         })
 
         btnPalette.setOnClickListener { ColorPickerDialog.show(this) }
+
+        val repoUrl = getString(R.string.repo_url)
+        repoLink.text = repoUrl
+        repoLink.setOnClickListener { copyRepoUrl(repoUrl) }
 
         archiveHeader.text = getString(R.string.section_archive) + "　▸"
         archiveHeader.setOnClickListener { openArchive() }
@@ -239,6 +288,12 @@ class MainActivity : AppCompatActivity() {
         }
         syncPosHeader()
         wirePositionButtons()
+    }
+
+    private fun copyRepoUrl(url: String) {
+        val clipboard = getSystemService(ClipboardManager::class.java) ?: return
+        clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), url))
+        Toast.makeText(this, R.string.repo_copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun syncAppearanceHeader() {
@@ -274,6 +329,7 @@ class MainActivity : AppCompatActivity() {
         showOptionPicker(TEMP_OPTIONS, ::tempLabel) {
             config.alertTempCelsius = it
             syncAlertLabels()
+            onAlertConfigChanged()
         }
     }
 
@@ -282,6 +338,7 @@ class MainActivity : AppCompatActivity() {
         showOptionPicker(SLOW_OPTIONS, ::slowLabel) {
             config.alertSlowWatts = it
             syncAlertLabels()
+            onAlertConfigChanged()
         }
     }
 
@@ -291,6 +348,20 @@ class MainActivity : AppCompatActivity() {
         showOptionPicker(TRICKLE_OPTIONS, ::slowLabel) {
             config.alertTrickleWatts = it
             syncAlertLabels()
+            onAlertConfigChanged()
+        }
+    }
+
+    /**
+     * 提醒的阈值/开关一改动：判定状态作废重算，并且顺手把充电期间的后台服务拉起来 ——
+     * 提醒由那个服务判定，跟悬浮窗开没开无关。
+     */
+    private fun onAlertConfigChanged() {
+        Alerts.reset()
+        if (config.wantsChargeWatcher) {
+            ChargeRecorderService.ensure(this)
+        } else if (!config.recordWhileCharging) {
+            ChargeRecorderService.stop(this)
         }
     }
 
@@ -402,6 +473,8 @@ class MainActivity : AppCompatActivity() {
         switchResidentNotification.isChecked = config.residentNotification
         switchLocked.isChecked = config.locked
         switchAlertFull.isChecked = config.alertFullEnabled
+        switchHideRecents.isChecked = config.hideFromRecents
+        switchRecordCharging.isChecked = config.recordWhileCharging
         checkShowPower.isChecked = config.showPower
         checkShowTemp.isChecked = config.showTemp
         checkShowVolt.isChecked = config.showVoltage
@@ -412,16 +485,39 @@ class MainActivity : AppCompatActivity() {
         textSizeValue.text = "${config.textSizeSp.roundToInt()} sp"
         seekBackgroundAlpha.progress = config.backgroundAlphaPercent
         backgroundAlphaValue.text = "${config.backgroundAlphaPercent}%"
-        seekCapacity.progress = (config.capacityMah - 1000) / 100
-        syncCapacityLabel()
+        syncCapacityUi()
         seekRefresh.progress = config.refreshMillis / 100 - 3
         refreshValue.text = "${config.refreshMillis / 1000f} 秒"
     }
 
-    /** 显示估算真正会用到的容量：自动读到就用设计容量。 */
-    private fun syncCapacityLabel() {
-        val design = if (config.autoCapacity) BatteryReader.designCapacity(this) else -1
-        capacityValue.text = if (design > 0) "$design mAh 自动" else "${config.capacityMah} mAh 手填"
+    /**
+     * 容量这一栏跟着「自动读取电池设计容量」切换：
+     * 自动只显示识别结果，手动才给输入框。
+     */
+    private fun syncCapacityUi() {
+        if (config.autoCapacity) {
+            val design = BatteryReader.designCapacity(this)
+            capacityAutoLabel.text = if (design > 0) {
+                "自动识别：$design mAh（只在电流全部读不到时参与估算）"
+            } else {
+                "自动识别失败，暂用 ${config.capacityMah} mAh"
+            }
+            capacityAutoLabel.visibility = View.VISIBLE
+            capacityManualRow.visibility = View.GONE
+        } else {
+            capacityAutoLabel.visibility = View.GONE
+            capacityManualRow.visibility = View.VISIBLE
+            if (capacityInput.text.toString() != config.capacityMah.toString()) {
+                capacityInput.setText(config.capacityMah.toString())
+            }
+        }
+    }
+
+    private fun commitCapacityInput() {
+        val typed = capacityInput.text.toString().toIntOrNull()
+        if (typed != null) config.capacityMah = typed
+        capacityInput.setText(config.capacityMah.toString())
+        BatteryReader.reset()
     }
 
     private fun refreshStatus() {
@@ -477,3 +573,11 @@ class MainActivity : AppCompatActivity() {
         private val TRICKLE_OPTIONS = listOf(0, 2, 3, 5)
     }
 }
+
+/**
+ * 桌面入口的两个互斥壳子，逻辑全在 MainActivity 里；分开写是因为只有 Activity 自己的
+ * excludeFromRecents 会被 AMS 认，alias 上的会被忽略。
+ */
+class SettingsShown : MainActivity()
+
+class SettingsHidden : MainActivity()

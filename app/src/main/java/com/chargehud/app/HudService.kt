@@ -176,7 +176,6 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
         gestureDetector = GestureDetector(this, gestureListener)
         createViews()
         createNotificationChannel()
-        Alerts.ensureChannel(this)
         // 服务是 startForegroundService 拉起的，不在时限内进前台系统会直接抛异常，
         // 所以先无条件 startForeground，再由 applyNotificationMode() 决定要不要把通知撤掉。
         startForeground(NOTIFICATION_ID, buildNotification())
@@ -234,8 +233,6 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
                 handler.postDelayed(ticker, settings.refreshMillis.toLong())
             }
             Prefs.KEY_RESIDENT_NOTIFICATION -> applyNotificationMode()
-            Prefs.KEY_ALERT_TEMP_C, Prefs.KEY_ALERT_SLOW_W, Prefs.KEY_ALERT_FULL,
-            Prefs.KEY_ALERT_TRICKLE_W -> Alerts.reset()
             Prefs.KEY_ENABLED -> if (!settings.enabled) stopSelf()
         }
     }
@@ -455,8 +452,9 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
     private fun refresh() {
         val reading = BatteryReader.read(this, settings)
         lastReading = reading
-        ChargeLog.onReading(this, reading)
-        Alerts.evaluate(this, settings, reading)
+        // 记录和提醒都由充电期间的后台服务做（取数器是共享状态，两处同时喂会互相打乱采样窗），
+        // 这里只负责确认它还活着：被系统回收了就顺手拉回来。
+        if (reading.charging) ChargeRecorderService.ensure(this)
         powerView.text = reading.formatPower()
         tempView.text = reading.formatTemp()
         voltView.text = if (reading.volts.isNaN()) "--" else String.format("%.2f V", reading.volts)
@@ -475,7 +473,7 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
         val reading = lastReading
         val contentIntent = PendingIntent.getActivity(
             this, 0,
-            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            RecentsEntry.settingsIntent(this),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val hideIntent = PendingIntent.getService(
@@ -549,9 +547,7 @@ class HudService : Service(), SharedPreferences.OnSharedPreferenceChangeListener
     }
 
     private fun openSettings() {
-        startActivity(
-            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
+        startActivity(RecentsEntry.settingsIntent(this))
     }
 
     private fun withAlpha(color: Int, alpha: Float): Int =
