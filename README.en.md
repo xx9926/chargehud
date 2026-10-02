@@ -217,3 +217,19 @@ app/src/main/java/com/chargehud/app/
 ## Notes
 
 This project is an independent implementation; all code is written against public Android APIs.
+
+## License
+
+Copyright (C) 2026 xx9926
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+**GNU General Public License as published by the Free Software Foundation**, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but **without any warranty**; without even
+the implied warranty of merchantability or fitness for a particular purpose. See the full text in
+[LICENSE](LICENSE) at the root of this repository.
+
+Since binaries are distributed as apks under Releases, the corresponding complete source required by section 6
+of the GPL lives in this same repository: each Release's tag (for example `v2.0`) is the exact source for that
+binary, and the source archive for it is one click away on the tag.
